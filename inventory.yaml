@@ -1,0 +1,15 @@
+servers:
+  web_master:
+    hosts:
+      bta_trans_1: 80.82.65.44
+    vars:
+      service_path: /app/bta/web/
+  web_slave:
+    hosts:
+      bta_trans_3: 90.82.64.90
+global_vars:
+  port: 22
+  username: bta
+  password: Yi8AAYjFZ4rQhvCUY2BRrkup2M8KPV3n
+  command: ${service_path}deploy.sh -r
+

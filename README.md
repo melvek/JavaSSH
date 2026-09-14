@@ -22,8 +22,8 @@ JavaSSH 是一个基于 JSch 的轻量级运维工具，用于批量化上传文
 ## 安装
 
 ```bash
-git clone https://github.com/your-org/javassh.git
-cd javassh
+git clone https://github.com/melvek/JavaSSH.git
+cd JavaSSH
 mvn clean package
 ```
 
@@ -32,7 +32,7 @@ mvn clean package
 为其创建别名，便于使用：
 
 ```bash
-alias jssh='java -jar /path/to/javassh-1.0.0.jar'
+alias javassh='java -jar /path/to/javassh-1.0.0.jar'
 ```
 
 ---
@@ -45,7 +45,7 @@ alias jssh='java -jar /path/to/javassh-1.0.0.jar'
 global_vars:
   port: 22
   username: deploy
-  password: "ENC(加密后的密码)"
+  password: "加密后的密码"
   service_path: /opt/app/
   command: "systemctl restart my-app"
 
@@ -60,7 +60,7 @@ servers:
         host: 192.168.1.2
         port: 2222
         username: root
-        password: "ENC(另一个密码)"
+        password: "另一个密码"
         remote_path: /data/app/
 ```
 
@@ -78,11 +78,7 @@ servers:
 
 明文密码存在安全风险，JavaSSH 使用 Jasypt 加密密码。运行 `EncryptTool` 的 `main` 方法生成密文：
 
-```java
-System.out.println(EncryptTool.encrypt("your-password"));
-```
-
-将输出结果以 `ENC(密文)` 的形式填入 YAML。
+将输出结果以 `(密文)` 的形式填入 YAML。
 
 注意：主密钥 `SEC_KEY` 硬编码在 `EncryptTool` 中，生产环境请改为从环境变量或配置中心读取。
 
@@ -181,13 +177,6 @@ jssh push prod-trans -f app.jar
 jssh deploy -i inventory.yaml prod-trans -f app.jar -y
 ```
 
-执行流程：
-
-1. 解析目标服务器列表
-2. 展示列表并等待用户确认（除使用 `-y`）
-3. 依次上传文件并执行远程命令
-4. 输出执行摘要
-
 ---
 
 ## 变量替换
@@ -207,30 +196,6 @@ servers:
 ```
 
 `JavaSSHCommand.replace()` 方法会递归替换所有 `${key}` 占位符。若某个 key 不存在，则保留原样。
-
----
-
-## 日志与颜色
-
-`LogPrinter` 提供统一的彩色输出：
-
-- `info` / `success` / `error` / `warning` / `hint` / `debug`
-- `section` / `progress` / `listItem` / `keyValue` / `summary`
-
-颜色自动检测：
-
-- Windows 默认禁用颜色（可设置环境变量 `JAVASSH_COLOR=1` 强制开启）
-- 非交互式终端（CI/CD）自动禁用颜色
-
----
-
-## 安全建议
-
-- 不要通过 `-p` 命令行传递密码，会暴露在进程列表中
-- 使用 `EncryptTool` 加密密码后写入清单文件
-- 生产环境将 `SEC_KEY` 从代码中移除，改为读取环境变量
-- 建议为运维账号配置密钥登录，并限制权限
-- 清单文件切勿提交到公开仓库
 
 ---
 
