@@ -1,21 +1,12 @@
 [![Language](https://img.shields.io/badge/Language-Java-blue.svg)](https://java.dev)
-[![Version](https://img.shields.io/badge/release-1.0.0-blue)](https://github.com/windvalley/gossh/releases)
+[![Version](https://img.shields.io/badge/release-1.0.0-blue)](https://github.com/melvek/JavaSSH/releases) 
 ![Supports](https://img.shields.io/badge/Supports-windows,%20Linux-orange)
 [![LICENSE](https://img.shields.io/github/license/melvek/JavaSSH)](LICENSE)
 
 # JavaSSH 使用说明
 
-JavaSSH 是一个基于 JSch 的轻量级运维工具，用于批量化上传文件到远程服务器，以及在多台服务器上执行远程命令。
-
+JavaSSH 是一个基于 JSch 开发的轻量级运维工具，用于批量上传文件到远程服务器，以及在多台服务器上执行远程命令。
 通过 YAML 清单文件定义服务器组、主机、认证信息及业务参数，即可一键完成批量部署、文件推送与命令执行。
-
-[环境要求](#环境要求)  
-[安装](#安装)  
-[快速开始](#快速开始)  
-[命令总览](#命令总览)  
-[command](#command--执行远程命令)  
-[push](#push--上传文件)  
-[deploy](#deploy--部署应用)
 
 ---
 
@@ -23,7 +14,7 @@ JavaSSH 是一个基于 JSch 的轻量级运维工具，用于批量化上传文
 
 - JDK 8 或更高版本
 - 远程服务器需支持 SSH / SFTP
-- 若使用 `-z` 压缩上传，远程服务器需支持 `unzip` 命令
+- 若使用 `-z` 压缩上传，远程服务器需支持 `unzip` 命令（开发中，敬请期待）
 
 ---
 
@@ -35,12 +26,12 @@ cd JavaSSH
 mvn clean package
 ```
 
-构建完成后，在 `target/` 目录下会生成可执行 JAR 文件，例如 `javassh-1.0.0.jar`。
+构建完成后，在 `target/` 目录下会生成可执行 JAR 文件，例如 `jssh-1.0.0.jar`。
 
 为其创建别名，便于使用：
 
 ```bash
-alias javassh='java -jar /path/to/javassh-1.0.0.jar'
+alias javassh='java -jar /path/to/jssh-1.0.0.jar'
 ```
 
 ---
@@ -84,9 +75,7 @@ servers:
 
 ### 2. 加密密码
 
-明文密码存在安全风险，JavaSSH 使用 Jasypt 加密密码。运行 `EncryptTool` 的 `main` 方法生成密文：
-
-将输出结果以 `(密文)` 的形式填入 YAML。
+明文密码存在安全风险，JavaSSH 使用 Jasypt 加密密码。运行 `EncryptTool` 的 `main` 方法生成密文，将输出结果填入 YAML。
 
 注意：主密钥 `SEC_KEY` 硬编码在 `EncryptTool` 中，生产环境请改为从环境变量或配置中心读取。
 
@@ -100,26 +89,29 @@ jssh <command> [hosts...] [options]
 
 ### 全局选项
 
-| 选项 | 长选项 | 参数 | 说明 |
-|------|--------|------|------|
-| `-i` | `--inventory` | `file` | 指定服务器清单文件（默认 `inventory.yaml`）|
-| `-l` | `--list` | | 仅显示服务器列表，不执行操作 |
-| `-P` | `--port` | `int` | 覆盖清单中的服务器连接端口 |
-| `-u` | `--user` | `string` | 覆盖清单中的服务器用户名 |
-| `-p` | `--password` | `string` | 覆盖清单中的服务器密码（不推荐）|
-| `-v` | `--version` | | 显示版本信息 |
-| `-h` | `--help` | | 显示帮助信息 |
+| 选项   | 长选项           | 参数       | 说明                             |
+|------|---------------|----------|--------------------------------|
+| `-i` | `--inventory` | `file`   | 指定服务器清单文件（默认 `inventory.yaml`） |
+| `-l` | `--list`      |          | 仅显示服务器列表，不执行操作                 |
+| `-P` | `--port`      | `int`    | 覆盖清单中的服务器连接端口                  |
+| `-u` | `--user`      | `string` | 覆盖清单中的服务器用户名                   |
+| `-p` | `--password`  | `string` | 覆盖清单中的服务器密码（不推荐）               |
+| `-v` | `--version`   |          | 显示版本信息                         |
+| `-h` | `--help`      |          | 显示帮助信息                         |
 
 ---
+
+
+vars 下可自行定义所需属性，可以命令中使用 ${参数名称} 方式使用，应用在执行时会自动进行替换。
 
 ## command — 执行远程命令
 
 在目标服务器上执行指定命令。
 
-| 选项 | 长选项 | 参数 | 说明 |
-|------|--------|------|------|
-| `-e` | `--execute` | `string` | 需要执行的命令（也可从清单中的 `command` 字段读取）|
-| `-h` | `--help` | | 显示命令帮助 |
+| 选项   | 长选项         | 参数       | 说明                              |
+|------|-------------|----------|---------------------------------|
+| `-e` | `--execute` | `string` | 需要执行的命令（也可从清单中的 `command` 字段读取） |
+| `-h` | `--help`    |          | 显示命令帮助                          |
 
 示例：
 
@@ -138,15 +130,15 @@ jssh command prod-trans
 
 ## push — 上传文件
 
-将本地文件上传到远程服务器指定目录，行为模拟 `cp` 命令。
+将本地文件上传到远程服务器指定目录。
 
-| 选项 | 长选项 | 参数 | 说明 |
-|------|--------|------|------|
-| `-f` | `--files` | `file or folder` | 需要上传的本地文件 |
-| `-d` | `--dest-path` | `path` | 远程目标路径（也可从清单 `service_path` 读取）|
-| `-F` | `--force` | | 允许覆盖已存在的远程文件 |
-| `-z` | `--zip` | | 压缩后上传（远程需支持 `unzip`）|
-| `-h` | `--help` | | 显示命令帮助 |
+| 选项   | 长选项           | 参数               | 说明                              |
+|------|---------------|------------------|---------------------------------|
+| `-f` | `--files`     | `file or folder` | 需要上传的本地文件                       |
+| `-d` | `--dest-path` | `path`           | 远程目标路径（也可从清单 `service_path` 读取） |
+| `-F` | `--force`     |                  | 允许覆盖已存在的远程文件                    |
+| `-z` | `--zip`       |                  | 压缩后上传（远程需支持 `unzip`）            |
+| `-h` | `--help`      |                  | 显示命令帮助                          |
 
 示例：
 
@@ -171,13 +163,13 @@ jssh push prod-trans -f app.jar
 
 上传文件并执行远程命令，适用于发布场景。
 
-| 选项 | 长选项 | 参数 | 说明 |
-|------|--------|------|------|
-| `-f` | `--files` | `file or folder` | 部署包路径（也可从清单 `package_path` 读取）|
-| `-d` | `--dest-path` | `path` | 远程部署路径（也可从清单 `service_path` 读取）|
-| `-e` | `--execute` | `string` | 部署后执行的命令（也可从清单 `command` 读取）|
-| `-y` | `--yes` | | 跳过服务器列表确认 |
-| `-h` | `--help` | | 显示命令帮助 |
+| 选项   | 长选项           | 参数               | 说明                              |
+|------|---------------|------------------|---------------------------------|
+| `-f` | `--files`     | `file or folder` | 部署包路径（也可从清单 `package_path` 读取）  |
+| `-d` | `--dest-path` | `path`           | 远程部署路径（也可从清单 `service_path` 读取） |
+| `-e` | `--execute`   | `string`         | 部署后执行的命令（也可从清单 `command` 读取）    |
+| `-y` | `--yes`       |                  | 跳过服务器列表确认                       |
+| `-h` | `--help`      |                  | 显示命令帮助                          |
 
 示例：
 
@@ -188,8 +180,7 @@ jssh deploy -i inventory.yaml prod-trans -f app.jar -y
 ---
 
 ## 变量替换
-
-清单文件中定义的任意 `extraFields` 均可在路径、命令中通过 `${key}` 引用：
+清单文件中定义的任意 `var` 下的属性均可在路径、命令中通过 `${key}` 引用：
 
 ```yaml
 global_vars:
@@ -205,6 +196,14 @@ servers:
 
 `JavaSSHCommand.replace()` 方法会递归替换所有 `${key}` 占位符。若某个 key 不存在，则保留原样。
 
+### 内置参数变量
+
+| 参数             | 名称     | 说明                                      |
+|----------------|--------|-----------------------------------------|
+| `date`         | 日期     | 当前自然日期，格式 `yyyyMMdd`                    |
+| `command`      | 默认执行命令 | 未指定 `-e` 参数时，使用清单文件中的 `command` 参数      |
+| `service_path` | 远程服务路径 | 未指定 `-d` 参数时，使用清单文件中的 `service_path` 参数 |
+
 ---
 
 ## 执行摘要示例
@@ -214,6 +213,6 @@ servers:
   Total tasks: 3
   Succeeded: 2
   Failed: 1
-  ↳ Failed hosts: prod_trans_3
+  - Failed hosts: prod_trans_3
   Completion time: 2024-05-20 15:32:11
 ```
