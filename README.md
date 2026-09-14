@@ -1,5 +1,5 @@
 [![Language](https://img.shields.io/badge/Language-Java-blue.svg)](https://java.dev)
-[![Version](https://img.shields.io/badge/release-1.0.0-blue)](https://github.com/melvek/JavaSSH/releases) 
+[![Version](https://img.shields.io/github/v/release/melvek/JavaSSH?include_prereleases)](https://github.com/melvek/JavaSSH/releases/latest) 
 ![Supports](https://img.shields.io/badge/Supports-windows,%20Linux-orange)
 [![LICENSE](https://img.shields.io/github/license/melvek/JavaSSH)](LICENSE)
 
