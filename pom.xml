@@ -87,10 +87,10 @@
             <configuration>
               <target>
                 <!-- 确保 release 目录存在 -->
-                <mkdir dir="${project.basedir}/JavaSSH" />
+                <mkdir dir="${project.basedir}/bin" />
 
                 <!-- 复制 JAR 文件到 release 目录 -->
-                <copy todir="${project.basedir}/JavaSSH">
+                <copy todir="${project.basedir}/bin">
                   <fileset dir="${project.build.directory}">
                     <include name="*.jar" />
                   </fileset>
