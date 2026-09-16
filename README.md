@@ -26,8 +26,12 @@ JavaSSH 是一个基于 JSch 开发的轻量级运维工具。
 
 ## 安装
 
+从 [GitHub Releases 页面](https://github.com/melvek/JavaSSH/releases) 下载预编译的 JAR 文件及执行脚本 `deploy.bat`(windows)或者`deploy.sh`(linux)。
+
+也可以通过编译安装：
+
 ```bash
-git clone https://github.com/melvek/JavaSSH.git
+git clone --depth 1 https://github.com/melvek/JavaSSH.git
 cd JavaSSH
 mvn clean package
 ```
@@ -51,7 +55,6 @@ global_vars:
   port: 22
   username: deploy
   password: 2dO7ObeRBjqyuKkMpV6Xkg==
-  service_path: /opt/app/
   command: "systemctl restart my-app"
 
 servers:
@@ -276,13 +279,13 @@ tasks:
 
 按优先级从低到高（高优先级覆盖低优先级）：
 
-| 层级  | 来源                           | 说明          |
-|-----|------------------------------|-------------|
-| 1   | `global_vars`                | 全局默认        |
-| 2   | `servers.<group>.vars`       | 服务组         |
-| 3   | `hosts.<host>.extraFields`   | 单台服务器       |
-| 4   | `tasks.<name>.steps[].with` | 任务流程步骤定义     |
-| 5   | CLI 参数（`-e` / `-f` / `-d`）   | 命令行指定，优先级最高 |
+| 层级  | 来源                          | 说明          |
+|-----|-----------------------------|-------------|
+| 1   | `global_vars`               | 全局默认        |
+| 2   | `servers.<group>.vars`      | 服务组         |
+| 3   | `hosts.<host>.extraFields`  | 单台服务器       |
+| 4   | `tasks.<name>.steps[].with` | 任务流程步骤定义    |
+| 5   | CLI 参数（`-e` / `-f` / `-d`）  | 命令行指定，优先级最高 |
 
 ### 内置参数变量
 
@@ -295,86 +298,9 @@ tasks:
 
 ---
 
-## 执行流程与错误处理
-
-### 执行顺序
-
-1. 解析第一个参数为流程名，从 `TaskRegistry` 中查找（用户流程优先）
-2. 解析目标主机（命令行参数 + 服务器组展开）
-3. 展示主机列表，等待用户确认（`-y` 可跳过）
-4. 对每台主机依次执行流程中每个步骤
-5. 单台主机所有步骤成功则计为成功，任一步骤失败则中止该主机剩余步骤，计为失败
-6. 其他主机继续执行，互不影响
-7. 输出执行摘要
-
-### 错误处理
-
-- 某步骤抛异常时，本主机剩余步骤不再执行，直接跳到下一台主机
-- 每个步骤的失败会包装为统一异常，携带主机名与步骤名，便于定位
-- 全部主机执行完毕后打印摘要
-
-### 执行摘要示例
-
-```
-=== Execution Summary ===
-  Total tasks: 3
-  Succeeded: 2
-  Failed: 1
-  - Failed hosts: prod_trans_3
-  Completion time: 2024-05-20 15:32:11
-```
+运行 `jssh -h` 即可看到新的 Action 及其参数。
 
 ---
 
-## 扩展 Action
-
-新增能力只需实现 `TaskAction` 接口并在 `ActionRegistry` 中注册，无需改动 CLI 层。
-
-示例：新增 `sleep` Action
-
-```java
-public class SleepAction implements TaskAction {
-
-    @Override
-    public String name() { return "sleep"; }
-
-    @Override
-    public List<Option> cliOptions() {
-        List<Option> list = new ArrayList<>();
-        list.add(Option.builder("s").longOpt("seconds").hasArg().argName("int")
-                .desc("Seconds to sleep").build());
-        return list;
-    }
-
-    @Override
-    public Map<String, String> cliVarMapping() {
-        return Collections.singletonMap("seconds", "seconds");
-    }
-
-    @Override
-    public void execute(ActionContext ctx) throws Exception {
-        Object raw = ctx.getWith().get("seconds");
-        int s = raw != null ? Integer.parseInt(String.valueOf(raw)) : 0;
-        Thread.sleep(s * 1000L);
-    }
-}
-```
-
-注册：
-
-```java
-register(new SleepAction());
-```
-
-在 YAML 中使用：
-
-```yaml
-tasks:
-  release:
-    steps:
-      - { name: "重启", action: command, with: { command: "systemctl restart app" } }
-      - { name: "等待", action: sleep,   with: { seconds: "10" } }
-      - { name: "健康检查", action: command, with: { command: "curl -sf http://localhost:8080/health" } }
-```
-
-运行 `jssh -h` 即可看到新的 Action 及其参数。
+### 更新日志
+[!CHANGELOG](https://github.com/melvek/JavaSSH/blob/main/CHANGELOG.md)
