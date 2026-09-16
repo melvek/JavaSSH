@@ -7,11 +7,11 @@
 
 JavaSSH 是一个基于 JSch 开发的轻量级运维工具。
 
-采用「Action + Chain」模型：Action 是原子能力（执行命令、上传文件等），Chain 是由若干 Action 组成的有序任务链。
-用户通过 YAML 清单文件定义服务器组、主机、认证信息、业务参数和任务链，即可一键完成批量部署、文件推送与命令执行。
+采用「Action + Flow」模型：Action 是原子能力（执行命令、上传文件等），Flow 是由若干 Action 组成的有序任务流程。
+用户通过 YAML 清单文件定义服务器组、主机、认证信息、业务参数和任务流程，即可一键完成批量部署、文件推送与命令执行。
 
-- 内置链：`command` / `push`
-- 自定义链：在 YAML 的 `chains` 段中按需编排，同名覆盖内置链
+- 内置流程：`command` / `push`
+- 自定义流程：在 YAML 的 `tasks` 段中按需编排，同名覆盖内置流程
 - 扩展：通过实现 `TaskAction` 快速扩展指令
 
 ---
@@ -68,7 +68,7 @@ servers:
         password: 2dO7ObeRBjqyuKkMpV6Xkg==
         remote_path: /data/app/
 
-chains:
+tasks:
   release:
     steps:
       - name: "上传新版本"
@@ -98,7 +98,7 @@ chains:
     - `hosts`：主机列表，支持两种写法
         - 简写形式：`主机名: IP`，直接使用全局参数
         - 完整形式：`主机名: { host, port, username, password, ... }`
-- `chains`：用户自定义任务链，可覆盖内置链，也可新增
+- `tasks`：用户自定义任务流程，可覆盖内置流程，也可新增
 - 除 `host`、`port`、`username`、`password` 外的所有字段都会进入 `extraFields`，可用于变量替换
 
 ### 2. 加密密码
@@ -112,10 +112,10 @@ chains:
 ## 命令总览
 
 ```
-jssh <chain> [hosts...] [options]
+jssh <task> [hosts...] [options]
 ```
 
-第一个参数即任务链名称
+第一个参数即任务流程名称
 
 ### 全局选项
 
@@ -132,9 +132,9 @@ jssh <chain> [hosts...] [options]
 
 ---
 
-## 内置任务链
+## 内置任务流程
 
-内置链由工具自带，无需在 YAML 中定义，直接使用。用户若在 `chains` 中定义同名链，则会覆盖内置链。
+内置流程由工具自带，无需在 YAML 中定义，直接使用。用户若在 `tasks` 中定义同名流程，则会覆盖内置流程。
 
 ### command — 执行远程命令
 
@@ -204,12 +204,12 @@ jssh deploy -i inventory.yaml prod-trans -f app.jar -y
 
 ---
 
-## 自定义任务链
+## 自定义任务流程
 
-在 `inventory.yaml` 的 `chains` 段中定义。每个链包含若干 `steps`，按声明顺序执行。
+在 `inventory.yaml` 的 `tasks` 段中定义。每个流程包含若干 `steps`，按声明顺序执行。
 
 ```yaml
-chains:
+tasks:
   release:
     steps:
       - name: "上传新版本"
@@ -248,10 +248,10 @@ chains:
 jssh release prod-trans -i inventory.yaml -y
 ```
 
-同名覆盖内置链：
+同名覆盖内置流程：
 
 ```yaml
-chains:
+tasks:
   command:
     steps:
       - name: "先打印环境"
@@ -264,7 +264,7 @@ chains:
           command: "${command}"
 ```
 
-此后 `jssh command ...` 将执行的是用户定义的任务链。
+此后 `jssh command ...` 将执行的是用户定义的任务流程。
 
 ---
 
@@ -281,7 +281,7 @@ chains:
 | 1   | `global_vars`                | 全局默认        |
 | 2   | `servers.<group>.vars`       | 服务组         |
 | 3   | `hosts.<host>.extraFields`   | 单台服务器       |
-| 4   | `chains.<name>.steps[].with` | 任务链步骤定义     |
+| 4   | `tasks.<name>.steps[].with` | 任务流程步骤定义     |
 | 5   | CLI 参数（`-e` / `-f` / `-d`）   | 命令行指定，优先级最高 |
 
 ### 内置参数变量
@@ -299,10 +299,10 @@ chains:
 
 ### 执行顺序
 
-1. 解析第一个参数为链名，从 `ChainRegistry` 中查找（用户链优先）
+1. 解析第一个参数为流程名，从 `TaskRegistry` 中查找（用户流程优先）
 2. 解析目标主机（命令行参数 + 服务器组展开）
 3. 展示主机列表，等待用户确认（`-y` 可跳过）
-4. 对每台主机依次执行链中每个步骤
+4. 对每台主机依次执行流程中每个步骤
 5. 单台主机所有步骤成功则计为成功，任一步骤失败则中止该主机剩余步骤，计为失败
 6. 其他主机继续执行，互不影响
 7. 输出执行摘要
@@ -369,7 +369,7 @@ register(new SleepAction());
 在 YAML 中使用：
 
 ```yaml
-chains:
+tasks:
   release:
     steps:
       - { name: "重启", action: command, with: { command: "systemctl restart app" } }

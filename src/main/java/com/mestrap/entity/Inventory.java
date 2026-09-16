@@ -10,7 +10,7 @@ public class Inventory {
     @JsonProperty("global_vars")
     private HostVars globalVars = new HostVars();
 
-    private Map<String, Chain> chains;   // 用户链，可为 null
+    private Map<String, Task> tasks;   // 用户流程，可为 null
 
     public Map<String, ServerGroup> getServers() {
         return servers;
@@ -28,6 +28,6 @@ public class Inventory {
         this.globalVars = globalVars;
     }
 
-    public Map<String, Chain> getChains() { return chains; }
-    public void setChains(Map<String, Chain> chains) { this.chains = chains; }
+    public Map<String, Task> getTasks() { return tasks; }
+    public void setTasks(Map<String, Task> tasks) { this.tasks = tasks; }
 }

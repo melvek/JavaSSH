@@ -14,7 +14,7 @@ global_vars:
   password: 2dO7ObeRBjqyuKkMpV6Xkg==
   command: ${service_path}deploy.sh -r
 
-chains:
+tasks:
   deploy:
     steps:
       - name: "停止服务"

@@ -25,9 +25,9 @@ public class InventoryLoader {
             Inventory inv = mapper.readValue(in, Inventory.class);
 
             int groups = inv.getServers() != null ? inv.getServers().size() : 0;
-            int chains = inv.getChains() != null ? inv.getChains().size() : 0;
+            int tasks = inv.getTasks() != null ? inv.getTasks().size() : 0;
             LogPrinter.success("Loaded inventory: " + groups + " groups, "
-                    + chains + " chains");
+                    + tasks + " tasks");
 
             if (inv.getGlobalVars() == null) {
                 inv.setGlobalVars(new com.mestrap.entity.HostVars());

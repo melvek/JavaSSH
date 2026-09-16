@@ -2,48 +2,35 @@
 
 ## [1.1.0] - 2026-09-16
 
-### 新增
+### Add
 
-- **任务链（Chain）机制**：支持将多个原子操作串联为一条有序的任务链，按声明顺序依次执行
+- **任务流程（task）机制**：支持将多个原子操作串联为一条有序的任务流程，按声明顺序依次执行
 - **Action 抽象层**：将原子能力抽象为 `TaskAction`，当前内置 `command`、`push` 两个 Action
-- **内置链**：
+- **内置流程**：
     - `command` — 执行远程命令
     - `push` — 上传文件到远程服务器
     - `deploy` — 上传文件并执行远程命令（等价于 push + command）
-- **自定义链**：在 `inventory.yaml` 的 `chains` 段中按需定义任务链，同名可覆盖内置链
-- **CLI 入口统一**：第一个参数即链名，`jssh <chain> [hosts...] [options]`
+- **自定义流程**：在 `inventory.yaml` 的 `flows` 段中按需定义任务流程，同名可覆盖内置流程
+- **CLI 入口统一**：第一个参数即流程名，`jssh <task> [hosts...] [options]`
 - **变量递归替换**：`${key}` 支持递归展开，最多 4 层，覆盖 global / group / host / step / CLI 五个变量来源
-- **CLI 变量注入**：`-e` / `-f` / `-d` 等参数自动注入变量池，供链中 `${...}` 引用
-- **Action 帮助信息**：`jssh -h` 列出所有已实现的 Action 及其参数，便于编写自定义链
+- **CLI 变量注入**：`-e` / `-f` / `-d` 等参数自动注入变量池，供流程中 `${...}` 引用
+- **Action 帮助信息**：`jssh -h` 列出所有已实现的 Action 及其参数，便于编写自定义流程
 - **统一异常 `JsshException`**：携带主机名与步骤名，便于定位失败位置
 - **执行中断语义**：任一 Action 抛异常即中断当前主机剩余步骤，其他主机继续执行
-- **步骤进度提示**：`[STEP x/y]` 显示当前步骤在链中的位置
+- **步骤进度提示**：`[STEP x/y]` 显示当前步骤在流程中的位置
 
-### 变更
+### Changed
 
-- **CLI 结构重构**：由「命令 + 参数」改为「链名 + 参数」
-- **`command` / `push` / `deploy` 从命令降级为内置链**，调用方式保持不变，兼容旧用法
-- **帮助信息**：不再列出链列表，改为列出所有可用 Action 及其参数
+- **CLI 结构重构**：由「命令 + 参数」改为「流程名 + 参数」
+- **`command` / `push` / `deploy` 从命令降级为内置流程**，调用方式保持不变，兼容旧用法
+- **帮助信息**：不再列出流程列表，改为列出所有可用 Action 及其参数
 - **密码加密**：继续使用 Jasypt，主密钥仍硬编码于 `EncryptTool`，生产环境建议改为环境变量读取
 
-### 移除
+### Removed
 
-- `DeployCommand` 等独立命令类（功能由内置链 `deploy` 提供）
-- `JavaSSHCommand` 抽象基类（职责由 `CommandDispatcher` + `ChainExecutor` 承接）
+- `DeployCommand` 等独立命令类（功能由内置流程 `deploy` 提供）
+- `JavaSSHCommand` 抽象基类（职责由 `CommandDispatcher` + `TaskExecutor` 承接）
 
-### 已知限制
-
-- 暂不支持步骤级的条件执行（`when`）、重试（`retry`）、失败继续（`on_failure: continue`）
-- 暂不支持主机级并行执行
-- 暂不支持子链引用
-
-### 后续计划
-
-- 步骤级条件、重试、失败策略
-- 步骤输出变量传递
-- 子链引用
-- 主机级并行
-- 更多内置 Action（`sleep`、`http`、`scp` 等）
 
 ---
 

@@ -1,6 +1,6 @@
 package com.mestrap.core;
 
-import com.mestrap.entity.Chain;
+import com.mestrap.entity.Task;
 import com.mestrap.entity.HostVars;
 import com.mestrap.entity.Inventory;
 import com.mestrap.entity.Step;
@@ -22,7 +22,7 @@ import java.util.Set;
 
 public class CommandDispatcher {
 
-    private final ChainRegistry chainRegistry = new ChainRegistry();
+    private final TaskRegistry taskRegistry = new TaskRegistry();
     private final ActionRegistry actionRegistry = new ActionRegistry();
 
     public int dispatch(String[] args) {
@@ -33,21 +33,21 @@ public class CommandDispatcher {
             return 1;
         }
 
-        // 第一个参数 = 链名
-        String chainName = args[0];
+        // 第一个参数 = 流程名
+        String taskName = args[0];
         String[] remaining = Arrays.copyOfRange(args, 1, args.length);
 
         // 加载清单（先预扫描 -i）
         String invFile = preScanInventory(args);
         Inventory inventory = InventoryLoader.load(invFile);
 
-        // 注册用户链（同名覆盖内置链）
-        chainRegistry.loadUserChains(inventory.getChains());
+        // 注册用户流程（同名覆盖内置流程）
+        taskRegistry.loadTasks(inventory.getTasks());
 
-        // 解析链
-        Chain chain = chainRegistry.resolve(chainName);
-        if (chain == null) {
-            // 链不存在时，如果用户想看帮助，仍然输出帮助
+        // 解析流程
+        Task task = taskRegistry.resolve(taskName);
+        if (task == null) {
+            // 流程不存在时，如果用户想看帮助，仍然输出帮助
             if (containsHelp(args)) {
                 ShowHelp.printGlobal(actionRegistry);
                 return 0;
@@ -56,8 +56,8 @@ public class CommandDispatcher {
             return 1;
         }
 
-        // 构建 Options（全局 + 该链用到的 action 选项）
-        Options options = buildOptions(chain);
+        // 构建 Options（全局 + 该流程用到的 action 选项）
+        Options options = buildOptions(task);
 
         // 解析参数
         CommandLine cl;
@@ -85,7 +85,7 @@ public class CommandDispatcher {
 
         if (hosts.isEmpty()) {
             LogPrinter.error("No target hosts specified");
-            LogPrinter.hint("Usage: jssh " + chainName + " <hosts...> [options]");
+            LogPrinter.hint("Usage: jssh " + taskName + " <hosts...> [options]");
             return 1;
         }
 
@@ -107,12 +107,12 @@ public class CommandDispatcher {
         }
 
         // 提取 CLI 变量注入
-        Map<String, Object> cliVars = extractCliVars(cl, chain);
+        Map<String, Object> cliVars = extractCliVars(cl, task);
 
         // 执行
-        ChainExecutor executor = new ChainExecutor(actionRegistry);
+        TaskExecutor executor = new TaskExecutor(actionRegistry);
         return executor.executeAll(
-                chain,
+                task,
                 hosts,
                 inventory.getGlobalVars() != null
                         ? inventory.getGlobalVars().getExtraFields()
@@ -122,9 +122,9 @@ public class CommandDispatcher {
     }
 
     /**
-     * 构建 Options：全局选项 + 该链用到的所有 action 的 cliOptions
+     * 构建 Options：全局选项 + 该流程用到的所有 action 的 cliOptions
      */
-    private Options buildOptions(Chain chain) {
+    private Options buildOptions(Task task) {
         Options options = new Options();
 
         // 全局选项
@@ -132,9 +132,9 @@ public class CommandDispatcher {
             options.addOption(o);
         }
 
-        // 链里用到的 action 选项（去重）
+        // 流程里用到的 action 选项（去重）
         Set<String> seen = new HashSet<>();
-        for (Step step : chain.getSteps()) {
+        for (Step step : task.getSteps()) {
             String actionName = step.getAction();
             if (actionName == null || seen.contains(actionName)) continue;
             seen.add(actionName);
@@ -154,11 +154,11 @@ public class CommandDispatcher {
      * 提取 CLI 变量注入：根据 action 声明的 cliVarMapping 把 -e / -f / -d 等
      * 映射到 ${command} / ${file} / ${dest} 等变量
      */
-    private Map<String, Object> extractCliVars(CommandLine cl, Chain chain) {
+    private Map<String, Object> extractCliVars(CommandLine cl, Task task) {
         Map<String, Object> vars = new HashMap<>();
         Set<String> seen = new HashSet<>();
 
-        for (Step step : chain.getSteps()) {
+        for (Step step : task.getSteps()) {
             String actionName = step.getAction();
             if (actionName == null || seen.contains(actionName)) continue;
             seen.add(actionName);

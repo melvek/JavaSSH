@@ -2,7 +2,7 @@ package com.mestrap.entity;
 
 import java.util.List;
 
-public class Chain {
+public class Task {
     private String name;
     private String description;
     private List<Step> steps;

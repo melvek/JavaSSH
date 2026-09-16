@@ -1,22 +1,22 @@
 package com.mestrap.core;
 
-import com.mestrap.entity.Chain;
+import com.mestrap.entity.Task;
 import com.mestrap.entity.Step;
 
 import java.util.*;
 
-public class BuiltinChains {
+public class BuiltinTasks {
 
-    public static Map<String, Chain> all() {
-        Map<String, Chain> map = new LinkedHashMap<>();
+    public static Map<String, Task> all() {
+        Map<String, Task> map = new LinkedHashMap<>();
         map.put("command", command());
         map.put("push", push());
         map.put("deploy", deploy());
         return map;
     }
 
-    private static Chain command() {
-        Chain c = new Chain();
+    private static Task command() {
+        Task c = new Task();
         c.setName("command");
         c.setDescription("Execute a remote command");
 
@@ -32,8 +32,8 @@ public class BuiltinChains {
         return c;
     }
 
-    private static Chain push() {
-        Chain c = new Chain();
+    private static Task push() {
+        Task c = new Task();
         c.setName("push");
         c.setDescription("Upload a file to remote server");
 
@@ -50,8 +50,8 @@ public class BuiltinChains {
         return c;
     }
 
-    private static Chain deploy() {
-        Chain c = new Chain();
+    private static Task deploy() {
+        Task c = new Task();
         c.setName("deploy");
         c.setDescription("Upload a file and restart service");
 

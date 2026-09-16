@@ -25,9 +25,9 @@ public class ShowHelp {
         System.out.println("Version: 1.0.0\n");
 
         System.out.println("Usage:");
-        System.out.println("  jssh <chain> [hosts...] [options]\n");
+        System.out.println("  jssh <task> [hosts...] [options]\n");
 
-        System.out.println("Available actions for chain definitions:\n");
+        System.out.println("Available actions for task definitions:\n");
 
         HelpFormatter hf = new HelpFormatter();
         hf.setOptionComparator(null);

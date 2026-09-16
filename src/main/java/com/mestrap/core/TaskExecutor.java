@@ -1,6 +1,6 @@
 package com.mestrap.core;
 
-import com.mestrap.entity.Chain;
+import com.mestrap.entity.Task;
 import com.mestrap.entity.HostVars;
 import com.mestrap.entity.Step;
 import com.mestrap.utils.LogPrinter;
@@ -9,18 +9,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class ChainExecutor {
+public class TaskExecutor {
 
     private final ActionRegistry actionRegistry;
 
-    public ChainExecutor(ActionRegistry actionRegistry) {
+    public TaskExecutor(ActionRegistry actionRegistry) {
         this.actionRegistry = actionRegistry;
     }
 
     /**
-     * 对一批主机执行一条链
+     * 对一批主机执行一条流程
      */
-    public int executeAll(Chain chain,
+    public int executeAll(Task task,
                           Map<String, HostVars> hosts,
                           Map<String, Object> globalVars,
                           Map<String, Object> cliVars) {
@@ -28,7 +28,7 @@ public class ChainExecutor {
         int success = 0, failed = 0;
 
         LogPrinter.section("Start");
-        LogPrinter.info("Chain: " + chain.getName() + " (" + chain.getSteps().size() + " steps)");
+        LogPrinter.info("Task: " + task.getName() + " (" + task.getSteps().size() + " steps)");
         LogPrinter.info("Targets: " + hosts.size());
 
         int idx = 0;
@@ -40,7 +40,7 @@ public class ChainExecutor {
             LogPrinter.progress(idx, hosts.size(), "Processing: " + hostName);
 
             try {
-                executeOnHost(chain, hostVars, globalVars, cliVars);
+                executeOnHost(task, hostVars, globalVars, cliVars);
                 success++;
                 LogPrinter.success(hostName + " OK");
             } catch (Exception ex) {
@@ -54,16 +54,16 @@ public class ChainExecutor {
     }
 
     /**
-     * 对单台主机执行整条链
+     * 对单台主机执行整条流程
      */
-    public void executeOnHost(Chain chain,
+    public void executeOnHost(Task task,
                               HostVars hostVars,
                               Map<String, Object> globalVars,
                               Map<String, Object> cliVars) {
 
         Map<String, Object> baseVars = mergeBaseVars(globalVars, hostVars, cliVars);
 
-        List<Step> steps = chain.getSteps();
+        List<Step> steps = task.getSteps();
         int total = steps.size();
 
         for (int i = 0; i < total; i++) {
