@@ -27,7 +27,7 @@ public class JSchFileUploader {
      * @throws JSchException SSH exception
      * @throws SftpException SFTP exception
      */
-    public static void uploadFile(String host, int port, String username,
+    public static int uploadFile(String host, int port, String username,
                                   String password, String localFile,
                                   String remoteTarget) throws JSchException, SftpException {
         JSch jsch = new JSch();
@@ -63,14 +63,13 @@ public class JSchFileUploader {
 
             try (FileInputStream fis = new FileInputStream(localFile)) {
                 channelSftp.put(fis, finalRemotePath, ChannelSftp.OVERWRITE);
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            } catch ( IOException e) {
+                System.err.println("Execution error: " + e.getMessage());
+                return 1;
             }
 
             LogPrinter.success("Upload successful: " + localFile + " -> " + finalRemotePath);
-
+            return 0;
         } finally {
             if (channelSftp != null && channelSftp.isConnected()) {
                 channelSftp.disconnect();

@@ -25,4 +25,4 @@ if "!GROUPS!"=="" (
     exit /b 1
 )
 
-java -Dfile.encoding=UTF-8 -jar jssh.jar deploy !GROUPS! -i "%ENV%.yaml"
+java -Dfile.encoding=UTF-8 -jar jssh-1.1.0.jar deploy !GROUPS! -i "%ENV%.yaml"

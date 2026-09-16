@@ -5,13 +5,14 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.mestrap.utils.EncryptTool;
+import com.mestrap.utils.LogPrinter;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
 public class JSchCommandExecutor {
 
-    public static String executeCommand(String host, int port, String username, String password, String command) {
+    public static int executeCommand(String host, int port, String username, String password, String command) {
         StringBuilder output = new StringBuilder();
         Session session = null;
         ChannelExec channel = null;
@@ -46,9 +47,12 @@ public class JSchCommandExecutor {
                 output.append(line).append("\n");
             }
 
+            LogPrinter.info(output.toString());
+
+            return channel.getExitStatus();
         } catch (JSchException | java.io.IOException e) {
-            e.printStackTrace();
-            return "Execution error: " + e.getMessage();
+            System.err.println("Execution error: " + e.getMessage());
+            return 1;
         } finally {
             // 6. Close connection, release resources
             if (channel != null && channel.isConnected()) {
@@ -58,7 +62,6 @@ public class JSchCommandExecutor {
                 session.disconnect();
             }
         }
-        return output.toString();
     }
 
 }

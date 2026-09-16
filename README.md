@@ -1,12 +1,18 @@
 [![Language](https://img.shields.io/badge/Language-Java-blue.svg)](https://java.dev)
-[![Version](https://img.shields.io/github/v/release/melvek/JavaSSH?include_prereleases)](https://github.com/melvek/JavaSSH/releases/latest) 
+[![Version](https://img.shields.io/github/v/release/melvek/JavaSSH?include_prereleases)](https://github.com/melvek/JavaSSH/releases/latest)
 ![Supports](https://img.shields.io/badge/Supports-windows,%20Linux-orange)
 [![LICENSE](https://img.shields.io/github/license/melvek/JavaSSH)](LICENSE)
 
 # JavaSSH 使用说明
 
-JavaSSH 是一个基于 JSch 开发的轻量级运维工具，用于批量上传文件到远程服务器，以及在多台服务器上执行远程命令。
-通过 YAML 清单文件定义服务器组、主机、认证信息及业务参数，即可一键完成批量部署、文件推送与命令执行。
+JavaSSH 是一个基于 JSch 开发的轻量级运维工具。
+
+采用「Action + Chain」模型：Action 是原子能力（执行命令、上传文件等），Chain 是由若干 Action 组成的有序任务链。
+用户通过 YAML 清单文件定义服务器组、主机、认证信息、业务参数和任务链，即可一键完成批量部署、文件推送与命令执行。
+
+- 内置链：`command` / `push`
+- 自定义链：在 YAML 的 `chains` 段中按需编排，同名覆盖内置链
+- 扩展：通过实现 `TaskAction` 快速扩展指令
 
 ---
 
@@ -26,7 +32,7 @@ cd JavaSSH
 mvn clean package
 ```
 
-构建完成后，在 `target/` 目录下会生成可执行 JAR 文件，例如 `jssh-1.0.0.jar`。
+构建完成后，在 `target/` 目录下会生成可执行 JAR 文件，例如 `jssh-x.x.x.jar`。
 
 为其创建别名，便于使用：
 
@@ -44,7 +50,7 @@ alias javassh='java -jar /path/to/jssh-1.0.0.jar'
 global_vars:
   port: 22
   username: deploy
-  password: "加密后的密码"
+  password: 2dO7ObeRBjqyuKkMpV6Xkg==
   service_path: /opt/app/
   command: "systemctl restart my-app"
 
@@ -59,8 +65,29 @@ servers:
         host: 192.168.1.2
         port: 2222
         username: root
-        password: "另一个密码"
+        password: 2dO7ObeRBjqyuKkMpV6Xkg==
         remote_path: /data/app/
+
+chains:
+  release:
+    steps:
+      - name: "上传新版本"
+        action: push
+        with:
+          file: "./dist/${app_name}-${version}.jar"
+          dest: "${service_path}"
+      - name: "备份旧版本"
+        action: command
+        with:
+          command: "cp ${service_path}app.jar ${service_path}app.jar.bak"
+      - name: "替换文件"
+        action: command
+        with:
+          command: "mv ${service_path}${app_name}-${version}.jar ${service_path}app.jar"
+      - name: "重启服务"
+        action: command
+        with:
+          command: "systemctl restart ${app_name}"
 ```
 
 说明：
@@ -71,6 +98,7 @@ servers:
     - `hosts`：主机列表，支持两种写法
         - 简写形式：`主机名: IP`，直接使用全局参数
         - 完整形式：`主机名: { host, port, username, password, ... }`
+- `chains`：用户自定义任务链，可覆盖内置链，也可新增
 - 除 `host`、`port`、`username`、`password` 外的所有字段都会进入 `extraFields`，可用于变量替换
 
 ### 2. 加密密码
@@ -84,8 +112,10 @@ servers:
 ## 命令总览
 
 ```
-jssh <command> [hosts...] [options]
+jssh <chain> [hosts...] [options]
 ```
+
+第一个参数即任务链名称
 
 ### 全局选项
 
@@ -96,22 +126,23 @@ jssh <command> [hosts...] [options]
 | `-P` | `--port`      | `int`    | 覆盖清单中的服务器连接端口                  |
 | `-u` | `--user`      | `string` | 覆盖清单中的服务器用户名                   |
 | `-p` | `--password`  | `string` | 覆盖清单中的服务器密码（不推荐）               |
+| `-y` | `--yes`       |          | 跳过执行前确认                        |
 | `-v` | `--version`   |          | 显示版本信息                         |
-| `-h` | `--help`      |          | 显示帮助信息                         |
+| `-h` | `--help`      |          | 显示帮助信息（列出所有可用 Action）          |
 
 ---
 
+## 内置任务链
 
-vars 下可自行定义所需属性，可以命令中使用 ${参数名称} 方式使用，应用在执行时会自动进行替换。
+内置链由工具自带，无需在 YAML 中定义，直接使用。用户若在 `chains` 中定义同名链，则会覆盖内置链。
 
-## command — 执行远程命令
+### command — 执行远程命令
 
 在目标服务器上执行指定命令。
 
 | 选项   | 长选项         | 参数       | 说明                              |
 |------|-------------|----------|---------------------------------|
 | `-e` | `--execute` | `string` | 需要执行的命令（也可从清单中的 `command` 字段读取） |
-| `-h` | `--help`    |          | 显示命令帮助                          |
 
 示例：
 
@@ -126,9 +157,7 @@ jssh command prod-trans -i inventory.yaml
 jssh command prod-trans
 ```
 
----
-
-## push — 上传文件
+### push — 上传文件
 
 将本地文件上传到远程服务器指定目录。
 
@@ -138,7 +167,6 @@ jssh command prod-trans
 | `-d` | `--dest-path` | `path`           | 远程目标路径（也可从清单 `service_path` 读取） |
 | `-F` | `--force`     |                  | 允许覆盖已存在的远程文件                    |
 | `-z` | `--zip`       |                  | 压缩后上传（远程需支持 `unzip`）            |
-| `-h` | `--help`      |                  | 显示命令帮助                          |
 
 示例：
 
@@ -150,18 +178,16 @@ jssh push app-server -f app.jar -d /opt/app/
 jssh push prod-trans -f app.jar
 ```
 
-上传行为说明（模拟 `cp`）：
+上传行为说明：
 
 1. 若 `-d` 以 `/` 结尾，视为目录，最终路径为 `目录 + 本地文件名`
 2. 若目标已存在且为目录，则上传到该目录内
 3. 若目标已存在且为文件，则备份原文件（追加时间戳）后上传新文件
 4. 若父目录不存在，直接报错（不会自动创建目录）
 
----
+### deploy — 部署应用，示例清单文件配置
 
-## deploy — 部署应用
-
-上传文件并执行远程命令，适用于发布场景。
+上传文件并执行远程命令，等价于 `push` + `command` 的组合。
 
 | 选项   | 长选项           | 参数               | 说明                              |
 |------|---------------|------------------|---------------------------------|
@@ -169,7 +195,6 @@ jssh push prod-trans -f app.jar
 | `-d` | `--dest-path` | `path`           | 远程部署路径（也可从清单 `service_path` 读取） |
 | `-e` | `--execute`   | `string`         | 部署后执行的命令（也可从清单 `command` 读取）    |
 | `-y` | `--yes`       |                  | 跳过服务器列表确认                       |
-| `-h` | `--help`      |                  | 显示命令帮助                          |
 
 示例：
 
@@ -179,22 +204,85 @@ jssh deploy -i inventory.yaml prod-trans -f app.jar -y
 
 ---
 
-## 变量替换
-清单文件中定义的任意 `var` 下的属性均可在路径、命令中通过 `${key}` 引用：
+## 自定义任务链
+
+在 `inventory.yaml` 的 `chains` 段中定义。每个链包含若干 `steps`，按声明顺序执行。
 
 ```yaml
-global_vars:
-  date: ${date}   # date 由工具自动注入（yyyyMMdd）
-  app_name: my-app
+chains:
+  release:
+    steps:
+      - name: "上传新版本"
+        action: push
+        with:
+          file: "./dist/${app_name}-${version}.jar"
+          dest: "${service_path}"
 
-servers:
-  prod:
-    vars:
-      service_path: /opt/${app_name}/
-      command: "systemctl restart ${app_name}"
+      - name: "备份旧版本"
+        action: command
+        with:
+          command: "cp ${service_path}app.jar ${service_path}app.jar.bak"
+
+      - name: "替换文件"
+        action: command
+        with:
+          command: "mv ${service_path}${app_name}-${version}.jar ${service_path}app.jar"
+
+      - name: "重启服务"
+        action: command
+        with:
+          command: "systemctl restart ${app_name}"
 ```
 
-`JavaSSHCommand.replace()` 方法会递归替换所有 `${key}` 占位符。若某个 key 不存在，则保留原样。
+字段说明：
+
+| 字段       | 说明                            |
+|----------|-------------------------------|
+| `name`   | 步骤名，仅用于日志输出                   |
+| `action` | 动作类型，对应 `jssh -h` 中列出的 Action |
+| `with`   | 动作参数，键值对，值支持 `${var}` 变量替换    |
+
+执行：
+
+```bash
+jssh release prod-trans -i inventory.yaml -y
+```
+
+同名覆盖内置链：
+
+```yaml
+chains:
+  command:
+    steps:
+      - name: "先打印环境"
+        action: command
+        with:
+          command: "echo $USER@$HOSTNAME"
+      - name: "再执行用户命令"
+        action: command
+        with:
+          command: "${command}"
+```
+
+此后 `jssh command ...` 将执行的是用户定义的任务链。
+
+---
+
+## 变量替换
+
+清单文件中定义的任意变量均可在路径、命令、参数中通过 `${key}` 引用。
+
+### 变量来源与优先级
+
+按优先级从低到高（高优先级覆盖低优先级）：
+
+| 层级  | 来源                           | 说明          |
+|-----|------------------------------|-------------|
+| 1   | `global_vars`                | 全局默认        |
+| 2   | `servers.<group>.vars`       | 服务组         |
+| 3   | `hosts.<host>.extraFields`   | 单台服务器       |
+| 4   | `chains.<name>.steps[].with` | 任务链步骤定义     |
+| 5   | CLI 参数（`-e` / `-f` / `-d`）   | 命令行指定，优先级最高 |
 
 ### 内置参数变量
 
@@ -202,11 +290,30 @@ servers:
 |----------------|--------|-----------------------------------------|
 | `date`         | 日期     | 当前自然日期，格式 `yyyyMMdd`                    |
 | `command`      | 默认执行命令 | 未指定 `-e` 参数时，使用清单文件中的 `command` 参数      |
+| `package_path` | 本地文件路径 | 未指定 `-f` 参数时，使用清单文件中的 `package_path` 参数 |
 | `service_path` | 远程服务路径 | 未指定 `-d` 参数时，使用清单文件中的 `service_path` 参数 |
 
 ---
 
-## 执行摘要示例
+## 执行流程与错误处理
+
+### 执行顺序
+
+1. 解析第一个参数为链名，从 `ChainRegistry` 中查找（用户链优先）
+2. 解析目标主机（命令行参数 + 服务器组展开）
+3. 展示主机列表，等待用户确认（`-y` 可跳过）
+4. 对每台主机依次执行链中每个步骤
+5. 单台主机所有步骤成功则计为成功，任一步骤失败则中止该主机剩余步骤，计为失败
+6. 其他主机继续执行，互不影响
+7. 输出执行摘要
+
+### 错误处理
+
+- 某步骤抛异常时，本主机剩余步骤不再执行，直接跳到下一台主机
+- 每个步骤的失败会包装为统一异常，携带主机名与步骤名，便于定位
+- 全部主机执行完毕后打印摘要
+
+### 执行摘要示例
 
 ```
 === Execution Summary ===
@@ -216,3 +323,58 @@ servers:
   - Failed hosts: prod_trans_3
   Completion time: 2024-05-20 15:32:11
 ```
+
+---
+
+## 扩展 Action
+
+新增能力只需实现 `TaskAction` 接口并在 `ActionRegistry` 中注册，无需改动 CLI 层。
+
+示例：新增 `sleep` Action
+
+```java
+public class SleepAction implements TaskAction {
+
+    @Override
+    public String name() { return "sleep"; }
+
+    @Override
+    public List<Option> cliOptions() {
+        List<Option> list = new ArrayList<>();
+        list.add(Option.builder("s").longOpt("seconds").hasArg().argName("int")
+                .desc("Seconds to sleep").build());
+        return list;
+    }
+
+    @Override
+    public Map<String, String> cliVarMapping() {
+        return Collections.singletonMap("seconds", "seconds");
+    }
+
+    @Override
+    public void execute(ActionContext ctx) throws Exception {
+        Object raw = ctx.getWith().get("seconds");
+        int s = raw != null ? Integer.parseInt(String.valueOf(raw)) : 0;
+        Thread.sleep(s * 1000L);
+    }
+}
+```
+
+注册：
+
+```java
+register(new SleepAction());
+```
+
+在 YAML 中使用：
+
+```yaml
+chains:
+  release:
+    steps:
+      - { name: "重启", action: command, with: { command: "systemctl restart app" } }
+      - { name: "等待", action: sleep,   with: { seconds: "10" } }
+      - { name: "健康检查", action: command, with: { command: "curl -sf http://localhost:8080/health" } }
+```
+
+运行 `jssh -h` 即可看到新的 Action 及其参数。

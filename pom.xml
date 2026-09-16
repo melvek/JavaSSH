@@ -4,7 +4,7 @@
 
   <groupId>com.mestrap</groupId>
   <artifactId>jssh</artifactId>
-  <version>1.0.0</version>
+  <version>1.1.0</version>
   <packaging>jar</packaging>
 
   <name>jssh</name>
@@ -90,16 +90,16 @@
                 <!-- 确保 release 目录存在 -->
                 <mkdir dir="${project.basedir}/bin" />
 
-                <!-- 删除 target 目录下所有以 original- 开头的 jar 文件 -->
+                <!-- 删除 target 目录下所有以 original- 开头的 jar 文件
                 <delete>
                   <fileset dir="${project.build.directory}" includes="original-*.jar"/>
                   <fileset dir="${project.build.directory}/bin" includes="*.jar"/>
-                </delete>
+                </delete> -->
 
                 <!-- 复制 JAR 文件到 release 目录 -->
                 <copy todir="${project.basedir}/bin">
                   <fileset dir="${project.build.directory}">
-                    <include name="*.jar" />
+                    <include name="jssh*.jar" />
                   </fileset>
                 </copy>
               </target>

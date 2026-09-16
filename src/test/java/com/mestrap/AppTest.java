@@ -4,9 +4,6 @@ import com.mestrap.core.CommandDispatcher;
 import com.mestrap.utils.LogPrinter;
 import junit.framework.TestCase;
 
-/**
- * Unit test for simple App.
- */
 public class AppTest extends TestCase
 {
     private String[] parseArgs(String argStr) {
@@ -18,7 +15,8 @@ public class AppTest extends TestCase
 
         CommandDispatcher dispatcher = new CommandDispatcher();
         // 模拟用户输入 deploy 命令
-        String[] args = parseArgs("deploy -i fina_uat.yaml prod_trans_master -e \"${service_path}deploy.sh\" -f app.jar");
+        String[] args = parseArgs("deploy -i inventory.yaml web_master -e \"${service_path}deploy.sh\" -f app.jar -y");
+        // String[] args = parseArgs("");
 
         int result = dispatcher.dispatch(args);
 
@@ -29,7 +27,7 @@ public class AppTest extends TestCase
     public void testEmptyArgsShowsHelp() {
         CommandDispatcher dispatcher = new CommandDispatcher();
         int result = dispatcher.dispatch(new String[]{});
-        assertEquals(1, result); // 返回非0表示出错
+        assertEquals(0, result); // 返回非0表示出错
     }
 
     public void testUnknownCommandShowsHelp() {

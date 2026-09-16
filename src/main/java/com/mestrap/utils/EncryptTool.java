@@ -20,7 +20,7 @@ public class EncryptTool {
     }
 
     public static void main(String[] args) {
-        // System.out.println(encrypt("Whsh@1234"));
-        System.out.println(decrypt("Yi8AAYjFZ4rQhvCUY2BRrkup2M8KPV3n"));
+        System.out.println(encrypt("123456"));
+        System.out.println(decrypt("2dO7ObeRBjqyuKkMpV6Xkg=="));
     }
 }

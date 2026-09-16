@@ -1,42 +1,209 @@
 package com.mestrap.core;
 
-import com.mestrap.command.*;
+import com.mestrap.entity.Chain;
+import com.mestrap.entity.HostVars;
+import com.mestrap.entity.Inventory;
+import com.mestrap.entity.Step;
+import com.mestrap.utils.ConfirmUtil;
+import com.mestrap.utils.GlobalOptions;
+import com.mestrap.utils.LogPrinter;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class CommandDispatcher {
 
-    // This method is the testable core logic
+    private final ChainRegistry chainRegistry = new ChainRegistry();
+    private final ActionRegistry actionRegistry = new ActionRegistry();
+
     public int dispatch(String[] args) {
-        // Handle empty arguments
+
+        // 无参数：打印帮助
         if (args == null || args.length == 0) {
-            new ExecuteCommand().ShowHelp(false);
+            ShowHelp.printGlobal(actionRegistry);
             return 1;
         }
 
-        String commandString = args[0];
+        // 第一个参数 = 链名
+        String chainName = args[0];
+        String[] remaining = Arrays.copyOfRange(args, 1, args.length);
 
-        // Remove the first command argument; the remaining arguments are the actual arguments to process
-        String[] remaining = new String[args.length - 1];
-        System.arraycopy(args, 1, remaining, 0, remaining.length);
+        // 加载清单（先预扫描 -i）
+        String invFile = preScanInventory(args);
+        Inventory inventory = InventoryLoader.load(invFile);
 
-        // Dispatch command
-        JavaSSHCommand command;
-        switch (commandString) {
-            case "command":
-                command = new ExecuteCommand();
-                break;
-            case "push":
-                command = new PushCommand();
-                break;
-            case "deploy":
-                command = new DeployCommand();
-                break;
-            default:
-                command = new ExecuteCommand();
-                command.ShowHelp(false);
-                return 1;
+        // 注册用户链（同名覆盖内置链）
+        chainRegistry.loadUserChains(inventory.getChains());
+
+        // 解析链
+        Chain chain = chainRegistry.resolve(chainName);
+        if (chain == null) {
+            // 链不存在时，如果用户想看帮助，仍然输出帮助
+            if (containsHelp(args)) {
+                ShowHelp.printGlobal(actionRegistry);
+                return 0;
+            }
+            ShowHelp.printGlobal(actionRegistry);
+            return 1;
         }
 
-        command.execute(remaining);
-        return 0; // Assume execution succeeded
+        // 构建 Options（全局 + 该链用到的 action 选项）
+        Options options = buildOptions(chain);
+
+        // 解析参数
+        CommandLine cl;
+        try {
+            cl = new DefaultParser().parse(options, remaining);
+        } catch (ParseException e) {
+            LogPrinter.error("Invalid arguments: " + e.getMessage());
+            LogPrinter.hint("Use -h to see help");
+            return 1;
+        }
+
+        // 元信息
+        if (cl.hasOption("v")) {
+            ShowHelp.printVersion();
+            return 0;
+        }
+        if (cl.hasOption("h")) {
+            ShowHelp.printGlobal(actionRegistry);
+            return 0;
+        }
+
+        // 解析目标主机
+        Map<String, HostVars> hosts = HostResolver.resolve(
+                cl.getArgList(), inventory, cl);
+
+        if (hosts.isEmpty()) {
+            LogPrinter.error("No target hosts specified");
+            LogPrinter.hint("Usage: jssh " + chainName + " <hosts...> [options]");
+            return 1;
+        }
+
+        // 展示主机列表
+        LogPrinter.section("Target hosts");
+        hosts.forEach((name, vars) ->
+                LogPrinter.listItem(name, vars.getHost()));
+
+        // 仅列出主机
+        if (cl.hasOption("l")) {
+            return 0;
+        }
+
+        // 确认
+        if (!cl.hasOption("y")) {
+            if (!ConfirmUtil.confirm("Confirm to proceed")) {
+                return 0;
+            }
+        }
+
+        // 提取 CLI 变量注入
+        Map<String, Object> cliVars = extractCliVars(cl, chain);
+
+        // 执行
+        ChainExecutor executor = new ChainExecutor(actionRegistry);
+        return executor.executeAll(
+                chain,
+                hosts,
+                inventory.getGlobalVars() != null
+                        ? inventory.getGlobalVars().getExtraFields()
+                        : Collections.<String, Object>emptyMap(),
+                cliVars
+        );
+    }
+
+    /**
+     * 构建 Options：全局选项 + 该链用到的所有 action 的 cliOptions
+     */
+    private Options buildOptions(Chain chain) {
+        Options options = new Options();
+
+        // 全局选项
+        for (Option o : GlobalOptions.all()) {
+            options.addOption(o);
+        }
+
+        // 链里用到的 action 选项（去重）
+        Set<String> seen = new HashSet<>();
+        for (Step step : chain.getSteps()) {
+            String actionName = step.getAction();
+            if (actionName == null || seen.contains(actionName)) continue;
+            seen.add(actionName);
+
+            TaskAction action = actionRegistry.get(actionName);
+            if (action == null) continue;
+
+            for (Option o : action.cliOptions()) {
+                options.addOption(o);
+            }
+        }
+
+        return options;
+    }
+
+    /**
+     * 提取 CLI 变量注入：根据 action 声明的 cliVarMapping 把 -e / -f / -d 等
+     * 映射到 ${command} / ${file} / ${dest} 等变量
+     */
+    private Map<String, Object> extractCliVars(CommandLine cl, Chain chain) {
+        Map<String, Object> vars = new HashMap<>();
+        Set<String> seen = new HashSet<>();
+
+        for (Step step : chain.getSteps()) {
+            String actionName = step.getAction();
+            if (actionName == null || seen.contains(actionName)) continue;
+            seen.add(actionName);
+
+            TaskAction action = actionRegistry.get(actionName);
+            if (action == null) continue;
+
+            for (Map.Entry<String, String> e : action.cliVarMapping().entrySet()) {
+                String cliOpt = e.getKey();
+                String varKey = e.getValue();
+                if (cl.hasOption(cliOpt)) {
+                    vars.put(varKey, cl.getOptionValue(cliOpt));
+                }
+            }
+        }
+
+        return vars;
+    }
+
+    /**
+     * 预扫描 -i / --inventory，用于在完整解析前确定清单文件路径
+     */
+    private String preScanInventory(String[] args) {
+        String defaultFile = "inventory.yaml";
+        for (int i = 0; i < args.length; i++) {
+            if (("-i".equals(args[i]) || "--inventory".equals(args[i]))
+                    && i + 1 < args.length) {
+                return args[i + 1];
+            }
+            if (args[i].startsWith("--inventory=")) {
+                return args[i].substring("--inventory=".length());
+            }
+        }
+        return defaultFile;
+    }
+
+    /**
+     * 判断参数里是否带 -h / --help
+     */
+    private boolean containsHelp(String[] args) {
+        for (String a : args) {
+            if ("-h".equals(a) || "--help".equals(a)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

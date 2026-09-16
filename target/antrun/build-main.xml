@@ -2,13 +2,9 @@
 <project name="maven-antrun-" default="main"  >
 <target name="main">
   <mkdir dir="E:\IdeaProjects\JavaSSH/bin"/>
-  <delete>
-    <fileset includes="original-*.jar" dir="E:\IdeaProjects\JavaSSH\target"/>
-    <fileset includes="*.jar" dir="E:\IdeaProjects\JavaSSH\target/bin"/>
-  </delete>
   <copy todir="E:\IdeaProjects\JavaSSH/bin">
     <fileset dir="E:\IdeaProjects\JavaSSH\target">
-      <include name="*.jar"/>
+      <include name="jssh*.jar"/>
     </fileset>
   </copy>
 </target>
