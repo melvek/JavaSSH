@@ -303,4 +303,4 @@ tasks:
 ---
 
 ### 更新日志
-[![CHANGELOG](https://img.shields.io/github/license/melvek/JavaSSH)](CHANGELOG.md)
+[CHANGELOG](CHANGELOG.md)
