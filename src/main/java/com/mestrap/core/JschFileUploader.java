@@ -11,7 +11,10 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class JSchFileUploader {
+/**
+ * @author melvek
+ */
+public class JschFileUploader {
 
     private static final ThreadLocal<SimpleDateFormat> DATE_FORMAT =
             ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyyMMddHHmmss"));

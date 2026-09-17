@@ -11,9 +11,10 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
 /**
+ * 远程命令执行服务
  * @author melvek
  */
-public class JSchCommandExecutor {
+public class JschCommandExecutor {
 
     public static int executeCommand(String host, int port, String username, String password, String command) {
         StringBuilder output = new StringBuilder();
