@@ -10,6 +10,9 @@ import com.mestrap.utils.LogPrinter;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 
+/**
+ * @author melvek
+ */
 public class JSchCommandExecutor {
 
     public static int executeCommand(String host, int port, String username, String password, String command) {

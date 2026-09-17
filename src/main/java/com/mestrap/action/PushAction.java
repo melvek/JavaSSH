@@ -6,7 +6,6 @@ import com.mestrap.core.OverwritePolicy;
 import com.mestrap.core.TaskAction;
 import com.mestrap.utils.LogPrinter;
 import com.mestrap.utils.VariableReplacer;
-import com.sun.org.apache.xpath.internal.operations.Bool;
 import org.apache.commons.cli.Option;
 
 import java.io.File;
@@ -15,6 +14,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 推送本地文件至远程服务器
+ * @author melvek
+ */
 public class PushAction implements TaskAction {
 
     @Override
@@ -56,8 +59,12 @@ public class PushAction implements TaskAction {
         Object fileRaw = ctx.getWith().get("file");
         Object destRaw = ctx.getWith().get("dest");
 
-        if (fileRaw == null) throw new IllegalArgumentException("push action requires 'file' parameter");
-        if (destRaw == null) throw new IllegalArgumentException("push action requires 'dest' parameter");
+        if (fileRaw == null) {
+            throw new IllegalArgumentException("push action requires 'file' parameter");
+        }
+        if (destRaw == null) {
+            throw new IllegalArgumentException("push action requires 'dest' parameter");
+        }
 
         String file = VariableReplacer.replace(String.valueOf(fileRaw), ctx.getVars());
         String dest = VariableReplacer.replace(String.valueOf(destRaw), ctx.getVars());
@@ -88,8 +95,12 @@ public class PushAction implements TaskAction {
     }
 
     private boolean isTruthy(Object v) {
-        if (v == null) return false;
-        if (v instanceof Boolean) return (Boolean) v;
+        if (v == null) {
+            return false;
+        }
+        if (v instanceof Boolean) {
+            return (Boolean) v;
+        }
 
         String s = String.valueOf(v).trim().toLowerCase();
         return "true".equals(s) || "1".equals(s) || "yes".equals(s);

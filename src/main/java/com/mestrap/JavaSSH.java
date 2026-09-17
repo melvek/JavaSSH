@@ -8,10 +8,10 @@ import com.mestrap.core.CommandDispatcher;
  * ${service_path}: Service deployment path, used for the -d option parameter of the push command
  * ${command}: Command content, used for the -e option parameter of the command
  * Parameters can be used with ${command}
+ * @author melvek
  */
 public class JavaSSH {
     public static void main( String[] args ) {
-        // LogPrinter.setColorEnabled(true);
         CommandDispatcher dispatcher = new CommandDispatcher();
         int exitCode = dispatcher.dispatch(args);
         System.exit(exitCode);

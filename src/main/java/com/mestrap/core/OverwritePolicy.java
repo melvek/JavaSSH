@@ -17,7 +17,9 @@ public enum OverwritePolicy {
     BACKUP;
 
     public static OverwritePolicy of(boolean force, boolean backup) {
-        if (!force) return FAIL;
+        if (!force) {
+            return FAIL;
+        }
         return backup ? BACKUP : OVERWRITE;
     }
 }

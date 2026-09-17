@@ -15,7 +15,9 @@ public class VariableReplacer {
      * 替换变量。若替换后仍存在未解析的 ${xxx}，抛出 JsshException。
      */
     public static String replace(String template, Map<String, Object> vars) {
-        if (template == null || template.isEmpty()) return template;
+        if (template == null || template.isEmpty()) {
+            return template;
+        }
 
         String current = template;
         for (int i = 0; i < MAX_DEPTH; i++) {

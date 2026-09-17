@@ -10,7 +10,7 @@ public class Inventory {
     @JsonProperty("global_vars")
     private HostVars globalVars = new HostVars();
 
-    private Map<String, Task> tasks;   // 用户流程，可为 null
+    private Map<String, Task> tasks;
 
     public Map<String, ServerGroup> getServers() {
         return servers;

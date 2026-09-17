@@ -70,6 +70,7 @@ public class JSchFileUploader {
                         String backup = backupExisting(sftp, finalPath);
                         LogPrinter.info("Backed up existing file to: " + backup);
                         break;
+                    default:
                 }
             }
 
@@ -84,8 +85,12 @@ public class JSchFileUploader {
         } catch (JSchException | SftpException | IOException e) {
             throw new JsshException("Upload failed: " + e.getMessage(), e);
         } finally {
-            if (sftp != null && sftp.isConnected()) sftp.disconnect();
-            if (session != null && session.isConnected()) session.disconnect();
+            if (sftp != null && sftp.isConnected()) {
+                sftp.disconnect();
+            }
+            if (session != null && session.isConnected()) {
+                session.disconnect();
+            }
         }
     }
 
@@ -152,7 +157,9 @@ public class JSchFileUploader {
     }
 
     private static String getParentDirectory(String path) {
-        if (path == null || path.isEmpty()) return "/";
+        if (path == null || path.isEmpty()) {
+            return "/";
+        }
         String normalized = path.replace('\\', '/');
         int lastSlash = normalized.lastIndexOf('/');
         return lastSlash <= 0 ? "/" : normalized.substring(0, lastSlash);

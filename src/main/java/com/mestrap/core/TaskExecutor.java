@@ -3,6 +3,7 @@ package com.mestrap.core;
 import com.mestrap.entity.Task;
 import com.mestrap.entity.HostVars;
 import com.mestrap.entity.Step;
+import com.mestrap.exception.JsshException;
 import com.mestrap.utils.LogPrinter;
 
 import java.util.HashMap;
@@ -83,7 +84,8 @@ public class TaskExecutor {
                 stepVars.putAll(step.getWith());
             }
             if (cliVars != null) {
-                stepVars.putAll(cliVars);   // CLI 最高
+                // CLI 中的参数优先级最高
+                stepVars.putAll(cliVars);
             }
 
             try {
@@ -100,7 +102,7 @@ public class TaskExecutor {
                     Thread.sleep(step.getDelay() * 1000L);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    //throw new JsshException(hostName, step.getName(), "Interrupted while waiting after step", e);
+                    throw new JsshException(hostVars.getHost(), step.getName(), "Interrupted while waiting after step", e);
                 }
             }
             LogPrinter.emptyLine();
@@ -111,9 +113,15 @@ public class TaskExecutor {
                                               HostVars hostVars,
                                               Map<String, Object> cliVars) {
         Map<String, Object> vars = new HashMap<>();
-        if (globalVars != null) vars.putAll(globalVars);
-        if (hostVars.getExtraFields() != null) vars.putAll(hostVars.getExtraFields());
-        if (cliVars != null) vars.putAll(cliVars);   // CLI 优先级最高
+        if (globalVars != null) {
+            vars.putAll(globalVars);
+        }
+        if (hostVars.getExtraFields() != null) {
+            vars.putAll(hostVars.getExtraFields());
+        }
+        if (cliVars != null) {
+            vars.putAll(cliVars);
+        }
         return vars;
     }
 }

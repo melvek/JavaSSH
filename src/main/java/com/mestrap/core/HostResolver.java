@@ -19,7 +19,9 @@ public class HostResolver {
         Map<String, HostVars> target = new LinkedHashMap<>();
         HostVars globalVars = inventory.getGlobalVars();
 
-        if (hostNames == null || hostNames.isEmpty()) return target;
+        if (hostNames == null || hostNames.isEmpty()) {
+            return target;
+        }
 
         for (String hostName : hostNames) {
 
@@ -30,10 +32,14 @@ public class HostResolver {
 
                 ServerGroup group = inventory.getServers().get(hostName);
                 HostVars groupVars = group.getVars();
-                if (groupVars != null) groupVars.merge(globalVars);
+                if (groupVars != null) {
+                    groupVars.merge(globalVars);
+                }
 
                 group.getHosts().forEach((name, vars) -> {
-                    if (groupVars != null) vars.merge(groupVars);
+                    if (groupVars != null) {
+                        vars.merge(groupVars);
+                    }
                     target.put(name, vars);
                 });
                 resolved = true;

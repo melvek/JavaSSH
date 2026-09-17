@@ -136,11 +136,15 @@ public class CommandDispatcher {
         Set<String> seen = new HashSet<>();
         for (Step step : task.getSteps()) {
             String actionName = step.getAction();
-            if (actionName == null || seen.contains(actionName)) continue;
+            if (actionName == null || seen.contains(actionName)) {
+                continue;
+            }
             seen.add(actionName);
 
             TaskAction action = actionRegistry.get(actionName);
-            if (action == null) continue;
+            if (action == null) {
+                continue;
+            }
 
             for (Option o : action.cliOptions()) {
                 options.addOption(o);
@@ -160,11 +164,15 @@ public class CommandDispatcher {
 
         for (Step step : task.getSteps()) {
             String actionName = step.getAction();
-            if (actionName == null || seen.contains(actionName)) continue;
+            if (actionName == null || seen.contains(actionName)) {
+                continue;
+            }
             seen.add(actionName);
 
             TaskAction action = actionRegistry.get(actionName);
-            if (action == null) continue;
+            if (action == null) {
+                continue;
+            }
 
             for (Map.Entry<String, String> e : action.cliVarMapping().entrySet()) {
                 String cliOpt = e.getKey();

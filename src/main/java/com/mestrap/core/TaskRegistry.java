@@ -15,7 +15,9 @@ public class TaskRegistry {
 
     /** 加载用户流程，覆盖同名内置流程 */
     public void loadTasks(Map<String, Task> tasks) {
-        if (tasks == null || tasks.isEmpty()) return;
+        if (tasks == null || tasks.isEmpty()) {
+            return;
+        }
         tasks.forEach((name, task) -> {
             task.setName(name);
             merged.put(name, task);

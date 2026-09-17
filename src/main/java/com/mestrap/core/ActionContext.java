@@ -4,6 +4,9 @@ import com.mestrap.entity.HostVars;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * @author melvek
+ */
 public class ActionContext {
 
     private final HostVars hostVars;

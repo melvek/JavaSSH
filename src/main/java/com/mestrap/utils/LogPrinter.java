@@ -6,7 +6,6 @@ package com.mestrap.utils;
  */
 public class LogPrinter {
 
-    // ANSI color codes
     private static final String RESET = "\033[0m";
     private static final String BLACK = "\033[0;30m";
     private static final String RED = "\033[0;31m";
@@ -18,13 +17,14 @@ public class LogPrinter {
     private static final String WHITE = "\033[0;37m";
 
     // Bold
+
     private static final String BOLD = "\033[1m";
     private static final String BOLD_RED = "\033[1;31m";
     private static final String BOLD_GREEN = "\033[1;32m";
     private static final String BOLD_YELLOW = "\033[1;33m";
     private static final String BOLD_BLUE = "\033[1;34m";
 
-    // Whether color is enabled (auto-detected)
+    /** Whether color is enabled (auto-detected) */
     private static boolean colorEnabled = true;
 
     static {
@@ -316,6 +316,7 @@ public class LogPrinter {
     // ==================== Custom color enum ====================
 
     public enum Color {
+        // 黑色
         BLACK(LogPrinter.BLACK),
         RED(LogPrinter.RED),
         GREEN(LogPrinter.GREEN),

@@ -1,16 +1,12 @@
 [![Language](https://img.shields.io/badge/Language-Java-blue.svg)](https://java.dev)
 [![Version](https://img.shields.io/github/v/release/melvek/JavaSSH?include_prereleases)](https://github.com/melvek/JavaSSH/releases/latest)
-![Supports](https://img.shields.io/badge/Supports-windows,%20Linux-orange)
+![Supports](https://img.shields.io/badge/Supports-Windows,%20Linux-orange)
 [![LICENSE](https://img.shields.io/github/license/melvek/JavaSSH)](LICENSE)
 
 JavaSSH 是一个基于 JSch 开发的轻量级运维工具，支持对同一组服务器批量上传及批量执行远程命令。
 
 采用「Action + Flow」模型：Action 是原子能力（执行命令、上传文件等），Flow 是由若干 Action 组成的有序任务流程。
 用户通过 YAML 清单文件定义服务器组、主机、认证信息、业务参数和任务流程，即可一键完成批量部署、文件推送与命令执行。
-
-- 内置流程：`command` / `push`
-- 自定义流程：在 YAML 的 `tasks` 段中按需编排，同名覆盖内置流程
-- 扩展：通过实现 `TaskAction` 快速扩展指令
 
 ---
 
@@ -115,10 +111,11 @@ tasks:
 ## 命令总览
 
 ```
-jssh <task> [hosts...] [options]
+jssh <task> <server group / hosts...> [options]
 ```
 
-第一个参数即任务流程名称
+`task`: 任务名称  
+`server group / hosts`: 服务器组名，或者主机名称
 
 ### 全局选项
 
@@ -137,7 +134,10 @@ jssh <task> [hosts...] [options]
 
 ## 内置任务流程
 
-内置流程由工具自带，无需在 YAML 中定义，直接使用。用户若在 `tasks` 中定义同名流程，则会覆盖内置流程。
+内置流程由工具自带，无需在 YAML 中定义，可直接使用。用户若在 `tasks` 中定义同名流程，则会覆盖内置流程。
+
+- 内置流程：`command` / `push`
+- 自定义流程：在 YAML 的 `tasks` 段中按需编排，同名覆盖内置流程
 
 ### command — 执行远程命令
 

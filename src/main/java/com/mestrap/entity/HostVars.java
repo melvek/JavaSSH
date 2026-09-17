@@ -7,6 +7,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * 服务器主机信息
+ * @author melvek
+ */
 public class HostVars {
     private String host;
     private Integer port;
@@ -15,7 +19,6 @@ public class HostVars {
     private String userName;
     private String password;
 
-    // Store all undefined fields
     private Map<String, Object> extraFields = new HashMap<>();
 
     public String getHost() {
@@ -50,7 +53,7 @@ public class HostVars {
         this.password = password;
     }
 
-    // Include extra fields during serialization as well
+    /** Include extra fields during serialization as well */
     @JsonAnyGetter
     public Map<String, Object> getExtraFields() {
         return extraFields;
@@ -60,20 +63,20 @@ public class HostVars {
         this.extraFields = extraFields;
     }
 
-    // Capture all undefined fields
+    /** Capture all undefined fields */
     @JsonAnySetter
     public void setExtraField(String key, Object value) {
         extraFields.put(key, value);
     }
 
 
-    // Convenience method: get the value of an extra field
+    /** Convenience method: get the value of an extra field */
     public Object getExtra(String key) {
         return extraFields.get(key);
     }
 
     /**
-     * ✅ Merge two extraFields; if the target key already exists, skip it
+     * Merge two extraFields; if the target key already exists, skip it
      *
      * @param sourceExtraFields Source extraFields (data to be merged in)
      * @return The number of key-value pairs actually added

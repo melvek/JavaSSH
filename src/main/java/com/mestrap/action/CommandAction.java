@@ -11,6 +11,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * 执行远程命令
+ * @author melvek
+ */
 public class CommandAction implements TaskAction {
 
     @Override
