@@ -112,7 +112,7 @@ public class TaskExecutor {
     private Map<String, Object> mergeBaseVars(Map<String, Object> globalVars,
                                               HostVars hostVars,
                                               Map<String, Object> cliVars) {
-        Map<String, Object> vars = new HashMap<>();
+        Map<String, Object> vars = new HashMap<>(16);
         if (globalVars != null) {
             vars.putAll(globalVars);
         }

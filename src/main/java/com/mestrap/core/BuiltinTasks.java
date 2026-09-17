@@ -8,7 +8,7 @@ import java.util.*;
 public class BuiltinTasks {
 
     public static Map<String, Task> all() {
-        Map<String, Task> map = new LinkedHashMap<>();
+        Map<String, Task> map = new LinkedHashMap<>(8);
         map.put("command", command());
         map.put("push", push());
         return map;
@@ -23,7 +23,7 @@ public class BuiltinTasks {
         s.setName("exec");
         s.setAction("command");
 
-        Map<String, Object> withMap = new HashMap<>();
+        Map<String, Object> withMap = new HashMap<>(2);
         withMap.put("command", "${command}");
         s.setWith(withMap);
 
@@ -40,7 +40,7 @@ public class BuiltinTasks {
         s.setName("upload");
         s.setAction("push");
 
-        Map<String, Object> withMap = new HashMap<>();
+        Map<String, Object> withMap = new HashMap<>(8);
         withMap.put("file", "${file}");
         withMap.put("dest", "${dest}");
         withMap.put("zip", "${zip}");

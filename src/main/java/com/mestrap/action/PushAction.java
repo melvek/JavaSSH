@@ -1,7 +1,7 @@
 package com.mestrap.action;
 
 import com.mestrap.core.ActionContext;
-import com.mestrap.core.JSchFileUploader;
+import com.mestrap.core.JschFileUploader;
 import com.mestrap.core.OverwritePolicy;
 import com.mestrap.core.TaskAction;
 import com.mestrap.utils.LogPrinter;
@@ -41,7 +41,7 @@ public class PushAction implements TaskAction {
 
     @Override
     public Map<String, String> cliVarMapping() {
-        Map<String, String> cliVar = new HashMap<>();
+        Map<String, String> cliVar = new HashMap<>(8);
         cliVar.put("file", "file");
         cliVar.put("dest", "dest");
         cliVar.put("force", "force");
@@ -78,7 +78,7 @@ public class PushAction implements TaskAction {
 
         LogPrinter.info("Push file " + sourceFile.getAbsolutePath() + " to " + dest);
 
-        int exitCode = JSchFileUploader.uploadFile(
+        int exitCode = JschFileUploader.uploadFile(
                 ctx.getHostVars().getHost(),
                 ctx.getHostVars().getPort(),
                 ctx.getHostVars().getUserName(),

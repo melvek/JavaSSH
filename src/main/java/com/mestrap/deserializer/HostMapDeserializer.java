@@ -12,12 +12,15 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+/**
+ * @author melvek
+ */
 public class HostMapDeserializer extends JsonDeserializer<Map<String, HostVars>> {
 
     @Override
     public Map<String, HostVars> deserialize(JsonParser p, DeserializationContext ctxt)
             throws IOException, JsonProcessingException {
-        Map<String, HostVars> result = new HashMap<>();
+        Map<String, HostVars> result = new HashMap<>(16);
         JsonNode rootNode = p.getCodec().readTree(p);
 
         Iterator<Map.Entry<String, JsonNode>> fields = rootNode.fields();
@@ -27,7 +30,7 @@ public class HostMapDeserializer extends JsonDeserializer<Map<String, HostVars>>
             JsonNode hostNode = field.getValue();
 
             HostVars hostVars = new HostVars();
-            Map<String, Object> extraFields = new HashMap<>();
+            Map<String, Object> extraFields = new HashMap<>(16);
 
             // Determine whether it is the shorthand form or the full form
             if (hostNode.isTextual()) {

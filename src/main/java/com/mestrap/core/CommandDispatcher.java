@@ -159,7 +159,7 @@ public class CommandDispatcher {
      * 映射到 ${command} / ${file} / ${dest} 等变量
      */
     private Map<String, Object> extractCliVars(CommandLine cl, Task task) {
-        Map<String, Object> vars = new HashMap<>();
+        Map<String, Object> vars = new HashMap<>(8);
         Set<String> seen = new HashSet<>();
 
         for (Step step : task.getSteps()) {
@@ -192,8 +192,9 @@ public class CommandDispatcher {
     private String preScanInventory(String[] args) {
         String defaultFile = "inventory.yaml";
         for (int i = 0; i < args.length; i++) {
-            if (("-i".equals(args[i]) || "--inventory".equals(args[i]))
-                    && i + 1 < args.length) {
+            boolean hasInv = ("-i".equals(args[i]) || "--inventory".equals(args[i]));
+
+            if (hasInv && i + 1 < args.length) {
                 return args[i + 1];
             }
             if (args[i].startsWith("--inventory=")) {

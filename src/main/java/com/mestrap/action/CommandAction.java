@@ -1,7 +1,7 @@
 package com.mestrap.action;
 
 import com.mestrap.core.ActionContext;
-import com.mestrap.core.JSchCommandExecutor;
+import com.mestrap.core.JschCommandExecutor;
 import com.mestrap.core.TaskAction;
 import com.mestrap.utils.LogPrinter;
 import com.mestrap.utils.VariableReplacer;
@@ -45,7 +45,7 @@ public class CommandAction implements TaskAction {
 
         LogPrinter.info("Execute command: " + cmd);
 
-        int exitCode = JSchCommandExecutor.executeCommand(
+        int exitCode = JschCommandExecutor.executeCommand(
                 ctx.getHostVars().getHost(),
                 ctx.getHostVars().getPort(),
                 ctx.getHostVars().getUserName(),
