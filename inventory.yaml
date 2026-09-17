@@ -1,19 +1,23 @@
-servers:
-  web_master:
-    hosts:
-      bta_trans_1: 127.0.0.1
-    vars:
-      service_path: /app/web/
-      package_path: ${date}/app.jar
-  web_slave:
-    hosts:
-      bta_trans_2: 192.168.1.1
+# 全局参数
 global_vars:
   port: 22
   username: app
   password: 2dO7ObeRBjqyuKkMpV6Xkg==
   command: ${service_path}deploy.sh -r
 
+# 服务器清单
+servers:
+  web_master:
+    hosts:
+      bta_trans_1: 127.0.0.1
+    vars:
+      service_path: /app/web/
+      package_path: bin/jssh-1.1.0.jar
+  web_slave:
+    hosts:
+      bta_trans_2: 192.168.1.1
+
+# 任务定义
 tasks:
   deploy:
     steps:
@@ -23,9 +27,11 @@ tasks:
           command: "${service_path}deploy.sh -t"
       - name: "上传文件"
         action: push
+        delay: 5
         with:
           file: "${package_path}"
           dest: "${service_path}"
+          force: false
       - name: "启动服务"
         action: command
         with:

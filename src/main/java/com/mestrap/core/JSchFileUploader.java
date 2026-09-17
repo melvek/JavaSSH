@@ -1,214 +1,160 @@
 package com.mestrap.core;
 
 import com.jcraft.jsch.*;
+import com.mestrap.exception.JsshException;
 import com.mestrap.utils.EncryptTool;
 import com.mestrap.utils.LogPrinter;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class JSchFileUploader {
 
-    private static final ThreadLocal<SimpleDateFormat> DATE_FORMAT = ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyyMMddHHmmss"));
+    private static final ThreadLocal<SimpleDateFormat> DATE_FORMAT =
+            ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyyMMddHHmmss"));
 
     /**
-     * Upload a file, simulating the behavior of the cp command
+     * 上传文件
      *
-     * @param host         Server address
-     * @param port         Port
-     * @param username     Username
-     * @param password     Password
-     * @param localFile    Local file path
-     * @param remoteTarget Remote target path (simulating the target argument of cp)
-     * @throws JSchException SSH exception
-     * @throws SftpException SFTP exception
+     * @param policy 覆盖策略：FAIL / OVERWRITE / BACKUP
+     * @return 0 表示成功
+     * @throws JsshException 上传失败或目标已存在且策略为 FAIL
      */
     public static int uploadFile(String host, int port, String username,
-                                  String password, String localFile,
-                                  String remoteTarget) throws JSchException, SftpException {
-        JSch jsch = new JSch();
+                                 String password, String localFile,
+                                 String remoteTarget, OverwritePolicy policy)
+            throws JsshException {
+
         Session session = null;
-        ChannelSftp channelSftp = null;
+        ChannelSftp sftp = null;
 
         try {
+            JSch jsch = new JSch();
             session = jsch.getSession(username, host, port);
-
-            // Decrypt password
-            String pwd = EncryptTool.decrypt(password);
-            session.setPassword(pwd);
+            session.setPassword(EncryptTool.decrypt(password));
             session.setConfig("StrictHostKeyChecking", "no");
             session.connect(30000);
 
-            channelSftp = (ChannelSftp) session.openChannel("sftp");
-            channelSftp.connect();
+            sftp = (ChannelSftp) session.openChannel("sftp");
+            sftp.connect();
 
-            String finalRemotePath = resolveTargetPath(channelSftp, localFile, remoteTarget);
-            String parentDir = getParentDirectory(finalRemotePath);
+            // 1. 解析最终目标路径
+            String finalPath = resolveTargetPath(sftp, localFile, remoteTarget);
+            String parentDir = getParentDirectory(finalPath);
 
-            if (!directoryExists(channelSftp, parentDir)) {
-                throw new SftpException(ChannelSftp.SSH_FX_NO_SUCH_FILE,
-                        "Parent directory does not exist: " + parentDir + " (please create the directory first)");
+            // 2. 父目录必须存在
+            if (!directoryExists(sftp, parentDir)) {
+                throw new JsshException("Parent directory does not exist: " + parentDir);
             }
 
-            if (directoryExists(channelSftp, finalRemotePath)) {
-                throw new SftpException(ChannelSftp.SSH_FX_FAILURE,
-                        "Target already exists and is a directory; cannot upload as a file: " + finalRemotePath);
+            // 3. 目标不能是目录
+            if (directoryExists(sftp, finalPath)) {
+                throw new JsshException(
+                        "Target exists and is a directory: " + finalPath);
             }
 
-            backupExistingRemoteFile(channelSftp, finalRemotePath);
+            // 4. 根据策略处理已存在的文件
+            if (exists(sftp, finalPath)) {
+                switch (policy) {
+                    case FAIL:
+                        throw new JsshException(
+                                "Remote file already exists: " + finalPath
+                                        + " (use -F/--force to overwrite, add -B/--backup to keep a backup)");
+                    case OVERWRITE:
+                        LogPrinter.info("Overwriting existing file: " + finalPath);
+                        break;
+                    case BACKUP:
+                        String backup = backupExisting(sftp, finalPath);
+                        LogPrinter.info("Backed up existing file to: " + backup);
+                        break;
+                }
+            }
 
+            // 5. 上传
             try (FileInputStream fis = new FileInputStream(localFile)) {
-                channelSftp.put(fis, finalRemotePath, ChannelSftp.OVERWRITE);
-            } catch ( IOException e) {
-                System.err.println("Execution error: " + e.getMessage());
-                return 1;
+                sftp.put(fis, finalPath, ChannelSftp.OVERWRITE);
             }
 
-            LogPrinter.success("Upload successful: " + localFile + " -> " + finalRemotePath);
+            LogPrinter.success("Uploaded: " + localFile + " -> " + finalPath);
             return 0;
+
+        } catch (JSchException | SftpException | IOException e) {
+            throw new JsshException("Upload failed: " + e.getMessage(), e);
         } finally {
-            if (channelSftp != null && channelSftp.isConnected()) {
-                channelSftp.disconnect();
-            }
-            if (session != null && session.isConnected()) {
-                session.disconnect();
-            }
+            if (sftp != null && sftp.isConnected()) sftp.disconnect();
+            if (session != null && session.isConnected()) session.disconnect();
         }
     }
 
-    /**
-     * If the remote target file already exists, rename it to a timestamped backup file.
-     * The new upload will then use the original target path.
-     *
-     * @param sftp       SFTP channel
-     * @param targetPath Original target file path
-     * @throws SftpException SFTP exception
-     */
-    private static void backupExistingRemoteFile(ChannelSftp sftp, String targetPath) throws SftpException {
-        // If the file does not exist, nothing to back up
-        if (!exists(sftp, targetPath)) {
-            return;
-        }
+    // ------------------------------------------------------------------
+    // 内部方法
+    // ------------------------------------------------------------------
 
-        // If it is a directory, do not rename (caller already checked, defensive here)
-        if (isDirectory(sftp, targetPath)) {
-            return;
-        }
+    /**
+     * 备份已存在的文件：重命名为 base.<timestamp>.ext
+     *
+     * @return 备份后的完整路径
+     */
+    private static String backupExisting(ChannelSftp sftp, String targetPath)
+            throws SftpException {
 
         String fileName = new File(targetPath).getName();
         String parentDir = getParentDirectory(targetPath);
 
-        // Separate file name and extension
-        String baseName;
-        String extension;
-        int dotIndex = fileName.lastIndexOf('.');
-        if (dotIndex > 0) {
-            baseName = fileName.substring(0, dotIndex);
-            extension = fileName.substring(dotIndex);
-        } else {
-            baseName = fileName;
-            extension = "";
-        }
+        int dot = fileName.lastIndexOf('.');
+        String base = dot > 0 ? fileName.substring(0, dot) : fileName;
+        String ext  = dot > 0 ? fileName.substring(dot) : "";
 
-        // Generate a new backup file name with a timestamp
         String timestamp = DATE_FORMAT.get().format(new Date());
-        String backupFileName = baseName + "." + timestamp + extension;
-        String backupPath = parentDir + "/" + backupFileName;
+        String backupName = base + "." + timestamp + ext;
+        String backupPath = parentDir + "/" + backupName;
 
-        // Rename the existing remote file to the backup name
         sftp.rename(targetPath, backupPath);
-        System.out.println("Remote file already exists, renamed to backup: " + backupFileName);
+        return backupPath;
     }
 
     /**
-     * Resolve the target path, simulating the behavior of the cp command
-     *
-     * @param sftp         SFTP channel
-     * @param localFile    Local file path
-     * @param remoteTarget User-specified target
-     * @return The final target file path
+     * 解析目标路径，模拟 cp 行为
      */
     private static String resolveTargetPath(ChannelSftp sftp, String localFile,
                                             String remoteTarget) throws SftpException {
-        // Get the local file name
         String fileName = new File(localFile).getName();
 
-        // Case 1: ends with /, target is a directory
+        // 以 / 结尾：目标是目录
         if (remoteTarget.endsWith("/")) {
             return remoteTarget + fileName;
         }
 
-        // Case 2: target already exists
-        if (exists(sftp, remoteTarget)) {
-            if (isDirectory(sftp, remoteTarget)) {
-                // If the target is a directory, copy into the directory
-                String normalizedPath = remoteTarget.endsWith("/") ? remoteTarget : remoteTarget + "/";
-                return normalizedPath + fileName;
-            } else {
-                // If the target is a file, upload to this path (existing file will be backed up later)
-                return remoteTarget;
-            }
+        // 目标已存在且是目录：放到目录里
+        if (exists(sftp, remoteTarget) && isDirectory(sftp, remoteTarget)) {
+            return remoteTarget + "/" + fileName;
         }
 
-        // Case 3: target does not exist → treat as a file path
+        // 其他：视为文件路径
         return remoteTarget;
     }
 
-    /**
-     * Check whether a path exists (file or directory)
-     */
     private static boolean exists(ChannelSftp sftp, String path) {
-        try {
-            sftp.stat(path);
-            return true;
-        } catch (SftpException e) {
-            return false;
-        }
+        try { sftp.stat(path); return true; }
+        catch (SftpException e) { return false; }
     }
 
-    /**
-     * Check whether it is a directory
-     */
-    private static boolean isDirectory(ChannelSftp sftp, String path) throws SftpException {
-        try {
-            SftpATTRS attrs = sftp.stat(path);
-            return attrs.isDir();
-        } catch (SftpException e) {
-            return false;
-        }
+    private static boolean isDirectory(ChannelSftp sftp, String path) {
+        try { return sftp.stat(path).isDir(); }
+        catch (SftpException e) { return false; }
     }
 
-    /**
-     * Check whether a directory exists
-     */
     private static boolean directoryExists(ChannelSftp sftp, String path) {
-        try {
-            SftpATTRS attrs = sftp.stat(path);
-            return attrs.isDir();
-        } catch (SftpException e) {
-            return false;
-        }
+        return isDirectory(sftp, path);
     }
 
-    /**
-     * Get the parent directory
-     */
     private static String getParentDirectory(String path) {
-        if (path == null || path.isEmpty()) {
-            return "/";
-        }
-
+        if (path == null || path.isEmpty()) return "/";
         String normalized = path.replace('\\', '/');
         int lastSlash = normalized.lastIndexOf('/');
-
-        if (lastSlash <= 0) {
-            return "/";
-        }
-
-        return normalized.substring(0, lastSlash);
+        return lastSlash <= 0 ? "/" : normalized.substring(0, lastSlash);
     }
 }

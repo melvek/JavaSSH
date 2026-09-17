@@ -1,5 +1,34 @@
 # 更新日志
 
+## [1.1.1] - 2026-09-17
+
+### Add
+
+- **新增了编码规范，后续将逐步对存量代码规范进行补充修正**
+    - 编码遵循 `Alibaba Java Coding Guidelines` 规范，详见 [CONTRIBUTING.md](CONTRIBUTING.md)
+- **覆盖策略**：`push` 动作新增 `-F` / `--force` 与 `-B` / `--backup` 参数
+  - 默认：远程文件已存在则报错，避免误覆盖
+  - `-F`：直接覆盖
+  - `-F -B`：备份原文件（追加时间戳）后覆盖
+- **步骤等待时间**：`Step` 新增 `delay` 字段，单位为秒，默认 `0` 表示不等待。执行成功后按配置等待再进入下一步
+
+### Changed
+
+- **`push` 默认行为变更**：由"自动备份 + 覆盖"改为"已存在则报错"，需显式使用 `-F` 才覆盖
+- **变量优先级调整**：CLI 参数（`-e` / `-f` / `-d` 等）优先级最高，覆盖 `global_vars`、`servers.vars`、`hosts.extraFields` 与 `steps[].with`
+- **`JSchFileUploader.uploadFile` 签名调整**：新增 `OverwritePolicy` 参数，返回值统一为 `int`
+- **异常统一**：所有执行异常包装为 `JsshException`，携带主机名与步骤名
+- **`JSchCommandExecutor.executeCommand` 签名调整**：输出直接打印，返回 `int` 退出码
+
+### Fixed
+
+- 修复 `-e` 参数无法覆盖内置任务中 `${command}` 的问题
+- 修复变量替换未命中时静默保留 `${xxx}` 导致的隐性错误
+- 修复上传过程中目标已存在时的备份文件命名可能重复的问题
+
+
+---
+
 ## [1.1.0] - 2026-09-16
 
 ### Add

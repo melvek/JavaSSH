@@ -9,6 +9,7 @@ import org.apache.commons.cli.Option;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class CommandAction implements TaskAction {
 
@@ -22,6 +23,11 @@ public class CommandAction implements TaskAction {
                         .desc("Command string (injected as ${command})")
                         .build()
         );
+    }
+
+    @Override
+    public Map<String, String> cliVarMapping() {
+        return Collections.singletonMap("execute", "command");
     }
 
     @Override

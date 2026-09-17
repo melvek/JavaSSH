@@ -76,8 +76,15 @@ public class TaskExecutor {
                 throw new RuntimeException("Unknown action: " + step.getAction());
             }
 
+            // 步骤级变量池：baseVars + step.with，CLI 最后叠加（最高优先级）
+            // FIXED 修复 cli 参数会被 step 参数覆盖的错误
             Map<String, Object> stepVars = new HashMap<>(baseVars);
-            if (step.getWith() != null) stepVars.putAll(step.getWith());
+            if (step.getWith() != null) {
+                stepVars.putAll(step.getWith());
+            }
+            if (cliVars != null) {
+                stepVars.putAll(cliVars);   // CLI 最高
+            }
 
             try {
                 action.execute(new ActionContext(hostVars, step.getWith(), stepVars));
@@ -85,6 +92,17 @@ public class TaskExecutor {
                 throw new RuntimeException("Step failed: " + step.getName() + " - " + e.getMessage(), e);
             }
 
+            // 执行成功后等待
+            if (step.getDelay() > 0) {
+                LogPrinter.emptyLine();
+                LogPrinter.info("Waiting " + step.getDelay() + "s before next step...");
+                try {
+                    Thread.sleep(step.getDelay() * 1000L);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    //throw new JsshException(hostName, step.getName(), "Interrupted while waiting after step", e);
+                }
+            }
             LogPrinter.emptyLine();
         }
     }

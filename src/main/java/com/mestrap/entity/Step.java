@@ -7,6 +7,8 @@ public class Step {
     private String action;
     private Map<String, Object> with;
 
+    private int delay = 0;
+
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
@@ -15,4 +17,12 @@ public class Step {
 
     public Map<String, Object> getWith() { return with; }
     public void setWith(Map<String, Object> with) { this.with = with; }
+
+    public int getDelay() {
+        return delay;
+    }
+
+    public void setDelay(int delay) {
+        this.delay = delay;
+    }
 }

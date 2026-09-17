@@ -3,9 +3,7 @@
 ![Supports](https://img.shields.io/badge/Supports-windows,%20Linux-orange)
 [![LICENSE](https://img.shields.io/github/license/melvek/JavaSSH)](LICENSE)
 
-# JavaSSH 使用说明
-
-JavaSSH 是一个基于 JSch 开发的轻量级运维工具。
+JavaSSH 是一个基于 JSch 开发的轻量级运维工具，支持对同一组服务器批量上传及批量执行远程命令。
 
 采用「Action + Flow」模型：Action 是原子能力（执行命令、上传文件等），Flow 是由若干 Action 组成的有序任务流程。
 用户通过 YAML 清单文件定义服务器组、主机、认证信息、业务参数和任务流程，即可一键完成批量部署、文件推送与命令执行。
@@ -41,7 +39,7 @@ mvn clean package
 为其创建别名，便于使用：
 
 ```bash
-alias javassh='java -jar /path/to/jssh-1.0.0.jar'
+alias javassh='java -jar /path/to/jssh-x.x.x.jar'
 ```
 
 ---
@@ -79,6 +77,8 @@ tasks:
         with:
           file: "./dist/${app_name}-${version}.jar"
           dest: "${service_path}"
+          force: true
+          backup: true
       - name: "备份旧版本"
         action: command
         with:
@@ -164,12 +164,13 @@ jssh command prod-trans
 
 将本地文件上传到远程服务器指定目录。
 
-| 选项   | 长选项           | 参数               | 说明                              |
-|------|---------------|------------------|---------------------------------|
-| `-f` | `--files`     | `file or folder` | 需要上传的本地文件                       |
-| `-d` | `--dest-path` | `path`           | 远程目标路径（也可从清单 `service_path` 读取） |
-| `-F` | `--force`     |                  | 允许覆盖已存在的远程文件                    |
-| `-z` | `--zip`       |                  | 压缩后上传（远程需支持 `unzip`）            |
+| 选项   | 长选项        | 参数               | 说明                              |
+|------|------------|------------------|---------------------------------|
+| `-f` | `--file`   | `file or folder` | 需要上传的本地文件                       |
+| `-d` | `--dest`   | `path`           | 远程目标路径（也可从清单 `service_path` 读取） |
+| `-F` | `--force`  |                  | 允许覆盖已存在的远程文件                    |
+| `-B` | `--backup` |                  | 覆盖远程文件前自动备份                     |
+| `-z` | `--zip`    |                  | 压缩后上传（远程需支持 `unzip`）            |
 
 示例：
 
@@ -179,6 +180,9 @@ jssh push app-server -f app.jar -d /opt/app/
 
 # 上传到服务器组
 jssh push prod-trans -f app.jar
+
+# 上传到服务器组自动备份
+jssh push prod-trans -f app.jar -F -B
 ```
 
 上传行为说明：
@@ -192,12 +196,12 @@ jssh push prod-trans -f app.jar
 
 上传文件并执行远程命令，等价于 `push` + `command` 的组合。
 
-| 选项   | 长选项           | 参数               | 说明                              |
-|------|---------------|------------------|---------------------------------|
-| `-f` | `--files`     | `file or folder` | 部署包路径（也可从清单 `package_path` 读取）  |
-| `-d` | `--dest-path` | `path`           | 远程部署路径（也可从清单 `service_path` 读取） |
-| `-e` | `--execute`   | `string`         | 部署后执行的命令（也可从清单 `command` 读取）    |
-| `-y` | `--yes`       |                  | 跳过服务器列表确认                       |
+| 选项   | 长选项         | 参数               | 说明                              |
+|------|-------------|------------------|---------------------------------|
+| `-f` | `--file`    | `file or folder` | 部署包路径（也可从清单 `package_path` 读取）  |
+| `-d` | `--dest`    | `path`           | 远程部署路径（也可从清单 `service_path` 读取） |
+| `-e` | `--execute` | `string`         | 部署后执行的命令（也可从清单 `command` 读取）    |
+| `-y` | `--yes`     |                  | 跳过服务器列表确认                       |
 
 示例：
 
@@ -293,8 +297,6 @@ tasks:
 |----------------|--------|-----------------------------------------|
 | `date`         | 日期     | 当前自然日期，格式 `yyyyMMdd`                    |
 | `command`      | 默认执行命令 | 未指定 `-e` 参数时，使用清单文件中的 `command` 参数      |
-| `package_path` | 本地文件路径 | 未指定 `-f` 参数时，使用清单文件中的 `package_path` 参数 |
-| `service_path` | 远程服务路径 | 未指定 `-d` 参数时，使用清单文件中的 `service_path` 参数 |
 
 ---
 

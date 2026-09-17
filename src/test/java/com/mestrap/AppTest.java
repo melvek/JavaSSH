@@ -10,12 +10,26 @@ public class AppTest extends TestCase
         return argStr.split(" ");
     }
 
-    public void testDeployCommand() {
+    public void testExecuteCommand() {
         LogPrinter.setColorEnabled(true);
 
         CommandDispatcher dispatcher = new CommandDispatcher();
         // 模拟用户输入 deploy 命令
-        String[] args = parseArgs("deploy -i inventory.yaml web_master -e \"${service_path}deploy.sh\" -f app.jar -y");
+        String[] args = parseArgs("command -i inventory.yaml web_master -e \"${service_path}deploy.sh\" -y");
+        // String[] args = parseArgs("");
+
+        int result = dispatcher.dispatch(args);
+
+        assertEquals(0, result); // 验证返回码
+        // 更深入的验证：可以通过Mock DeployCommand来验证execute是否被调用（见下方进阶）
+    }
+
+    public void testPushCommand() {
+        LogPrinter.setColorEnabled(true);
+
+        CommandDispatcher dispatcher = new CommandDispatcher();
+        // 模拟用户输入 deploy 命令
+        String[] args = parseArgs("push -i inventory.yaml web_master -f \"bin/jssh-1.1.0.jar\" -d ${service_path}  -y");
         // String[] args = parseArgs("");
 
         int result = dispatcher.dispatch(args);
@@ -30,12 +44,17 @@ public class AppTest extends TestCase
         assertEquals(0, result); // 返回非0表示出错
     }
 
-    public void testUnknownCommandShowsHelp() {
+    public void testDeployTask() {
+        LogPrinter.setColorEnabled(true);
+
         CommandDispatcher dispatcher = new CommandDispatcher();
-        String[] args = {"command", "-h"};
+        // 模拟用户输入 deploy 命令
+        String[] args = parseArgs("deploy -i inventory.yaml web_master -y");
+        // String[] args = parseArgs("");
 
         int result = dispatcher.dispatch(args);
-        assertEquals(0, result);
+
+        assertEquals(0, result); // 验证返回码
     }
 
 }
