@@ -21,6 +21,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * @author melvek
+ */
 public class CommandDispatcher {
 
     private final TaskRegistry taskRegistry = new TaskRegistry();
@@ -71,11 +74,11 @@ public class CommandDispatcher {
         }
 
         // 元信息
-        if (cl.hasOption("v")) {
+        if (cl.hasOption(GlobalOptions.VERSION)) {
             ShowHelp.printVersion();
             return 0;
         }
-        if (cl.hasOption("h")) {
+        if (cl.hasOption(GlobalOptions.HELP)) {
             ShowHelp.printGlobal(actionRegistry);
             return 0;
         }
@@ -96,12 +99,12 @@ public class CommandDispatcher {
                 LogPrinter.listItem(name, vars.getHost()));
 
         // 仅列出主机
-        if (cl.hasOption("l")) {
+        if (cl.hasOption(GlobalOptions.LIST)) {
             return 0;
         }
 
         // 确认
-        if (!cl.hasOption("y")) {
+        if (!cl.hasOption(GlobalOptions.YES)) {
             if (!ConfirmUtil.confirm("Confirm to proceed")) {
                 return 0;
             }

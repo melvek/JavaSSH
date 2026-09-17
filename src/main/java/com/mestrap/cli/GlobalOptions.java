@@ -5,7 +5,18 @@ import org.apache.commons.cli.Option;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * @author melvek
+ */
 public class GlobalOptions {
+
+    public static final String LIST = "list";
+    public static final String PORT = "port";
+    public static final String PASSWORD = "password";
+    public static final String USERNAME = "user";
+    public static final String YES = "yes";
+    public static final String VERSION = "version";
+    public static final String HELP = "help";
 
     public static List<Option> all() {
         List<Option> list = new ArrayList<>();

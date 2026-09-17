@@ -1,5 +1,6 @@
 package com.mestrap.core;
 
+import com.mestrap.cli.GlobalOptions;
 import com.mestrap.entity.HostVars;
 import com.mestrap.entity.Inventory;
 import com.mestrap.entity.ServerGroup;
@@ -61,15 +62,15 @@ public class HostResolver {
         }
 
         // CLI 覆盖
-        if (cl.hasOption("P")) {
+        if (cl.hasOption(GlobalOptions.PORT)) {
             int p = Integer.parseInt(cl.getOptionValue("P"));
             target.values().forEach(v -> v.setPort(p));
         }
-        if (cl.hasOption("u")) {
+        if (cl.hasOption(GlobalOptions.USERNAME)) {
             String u = cl.getOptionValue("u");
             target.values().forEach(v -> v.setUserName(u));
         }
-        if (cl.hasOption("p")) {
+        if (cl.hasOption(GlobalOptions.PASSWORD)) {
             String p = cl.getOptionValue("p");
             target.values().forEach(v -> v.setPassword(p));
             LogPrinter.warning("Password passed via CLI is a security risk");
