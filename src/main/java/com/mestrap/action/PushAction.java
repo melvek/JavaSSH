@@ -3,7 +3,6 @@ package com.mestrap.action;
 import com.mestrap.core.ActionContext;
 import com.mestrap.core.JschFileUploader;
 import com.mestrap.core.OverwritePolicy;
-import com.mestrap.core.TaskAction;
 import com.mestrap.utils.LogPrinter;
 import com.mestrap.utils.VariableReplacer;
 import org.apache.commons.cli.Option;

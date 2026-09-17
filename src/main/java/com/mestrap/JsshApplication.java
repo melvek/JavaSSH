@@ -1,6 +1,6 @@
 package com.mestrap;
 
-import com.mestrap.core.CommandDispatcher;
+import com.mestrap.cli.CommandDispatcher;
 
 /**
  * JavaSSH is a lightweight operations tool developed based on JSch, used for batch uploading files to remote servers and executing remote commands.

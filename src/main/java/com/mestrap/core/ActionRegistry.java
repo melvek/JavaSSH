@@ -2,6 +2,7 @@ package com.mestrap.core;
 
 import com.mestrap.action.CommandAction;
 import com.mestrap.action.PushAction;
+import com.mestrap.action.TaskAction;
 
 import java.util.Collection;
 import java.util.HashMap;

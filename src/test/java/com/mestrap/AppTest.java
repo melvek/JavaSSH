@@ -1,6 +1,6 @@
 package com.mestrap;
 
-import com.mestrap.core.CommandDispatcher;
+import com.mestrap.cli.CommandDispatcher;
 import com.mestrap.utils.LogPrinter;
 import junit.framework.TestCase;
 
