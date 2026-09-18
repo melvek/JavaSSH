@@ -12,6 +12,7 @@ import java.util.Map;
 
 /**
  * 执行远程命令
+ * -e, --execute 远程执行的命令内容，支持 ${...} 格式参数
  * @author melvek
  */
 public class CommandAction implements TaskAction {

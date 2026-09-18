@@ -105,6 +105,7 @@ public class CommandDispatcher {
 
         // 确认
         if (!cl.hasOption(GlobalOptions.YES)) {
+            // noinspection AlibabaUndefineMagicConstant
             if (!ConfirmUtil.confirm("Confirm to proceed")) {
                 return 0;
             }

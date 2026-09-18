@@ -2,6 +2,7 @@ package com.mestrap.core;
 
 import com.jcraft.jsch.*;
 import com.mestrap.exception.JsshException;
+import com.mestrap.utils.Constant;
 import com.mestrap.utils.EncryptTool;
 import com.mestrap.utils.LogPrinter;
 
@@ -132,13 +133,13 @@ public class JschFileUploader {
         String fileName = new File(localFile).getName();
 
         // 以 / 结尾：目标是目录
-        if (remoteTarget.endsWith("/")) {
+        if (remoteTarget.endsWith(Constant.SEPARATOR)) {
             return remoteTarget + fileName;
         }
 
         // 目标已存在且是目录：放到目录里
         if (exists(sftp, remoteTarget) && isDirectory(sftp, remoteTarget)) {
-            return remoteTarget + "/" + fileName;
+            return remoteTarget + Constant.SEPARATOR + fileName;
         }
 
         // 其他：视为文件路径

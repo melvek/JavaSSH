@@ -6,6 +6,15 @@ package com.mestrap.utils;
  */
 public class LogPrinter {
 
+    /** 系统属性键：操作系统名称 */
+    private static final String PROP_OS_NAME = "os.name";
+
+    /** 操作系统名称中表示 Windows 的关键字 */
+    private static final String OS_WINDOWS = "windows";
+
+    /** 环境变量：强制启用颜色 */
+    private static final String ENV_FORCE_COLOR = "JAVASSH_COLOR";
+
     private static final String RESET = "\033[0m";
     private static final String BLACK = "\033[0;30m";
     private static final String RED = "\033[0;31m";
@@ -37,14 +46,14 @@ public class LogPrinter {
      */
     private static void detectColorSupport() {
         // Windows does not support ANSI colors by default (unless enabled)
-        String os = System.getProperty("os.name").toLowerCase();
-        if (os.contains("windows")) {
+        String os = System.getProperty(PROP_OS_NAME).toLowerCase();
+        if (os.contains(OS_WINDOWS)) {
             // Windows 10 and above may support it, but it is disabled by default
             // It can be enabled as needed; here it is disabled by default for compatibility
             colorEnabled = false;
 
             // If an environment variable is set, it can be forcibly enabled
-            if (System.getenv("JAVASSH_COLOR") != null) {
+            if (System.getenv(ENV_FORCE_COLOR) != null) {
                 colorEnabled = true;
             }
         }
