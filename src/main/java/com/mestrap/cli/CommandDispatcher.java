@@ -39,31 +39,13 @@ public class CommandDispatcher {
 
         // 第一个参数 = 流程名
         String taskName = args[0];
+        // 获取流程名称之后，从原参数列表中去掉
         String[] remaining = Arrays.copyOfRange(args, 1, args.length);
 
-        // 加载清单（先预扫描 -i）
-        String invFile = preScanInventory(args);
-        Inventory inventory = InventoryLoader.load(invFile);
+        // ---- 1. 一次性注册所有选项 ----
+        Options options = buildAllOptions();
 
-        // 注册用户流程（同名覆盖内置流程）
-        taskRegistry.loadTasks(inventory.getTasks());
-
-        // 解析流程
-        Task task = taskRegistry.resolve(taskName);
-        if (task == null) {
-            // 流程不存在时，如果用户想看帮助，仍然输出帮助
-            if (containsHelp(args)) {
-                ShowHelp.printGlobal(actionRegistry);
-                return 0;
-            }
-            ShowHelp.printGlobal(actionRegistry);
-            return 1;
-        }
-
-        // 构建 Options（全局 + 该流程用到的 action 选项）
-        Options options = buildOptions(task);
-
-        // 解析参数
+        // ---- 2. 直接解析 ----
         CommandLine cl;
         try {
             cl = new DefaultParser().parse(options, remaining);
@@ -83,9 +65,26 @@ public class CommandDispatcher {
             return 0;
         }
 
+        // ---- 4. 加载清单 ----
+        String invFile = cl.hasOption("i")
+                ? cl.getOptionValue("i")
+                : "inventory.yaml";
+        Inventory inventory = InventoryLoader.load(invFile);
+
+        // 注册用户流程（同名覆盖内置流程）
+        taskRegistry.loadTasks(inventory.getTasks());
+
+        // 解析流程
+        Task task = taskRegistry.resolve(taskName);
+        if (task == null) {
+            LogPrinter.error("Unknown task: <" + taskName + ">");
+            // 流程不存在时，输出帮助
+            ShowHelp.printGlobal(actionRegistry);
+            return 1;
+        }
+
         // 解析目标主机
-        Map<String, HostVars> hosts = HostResolver.resolve(
-                cl.getArgList(), inventory, cl);
+        Map<String, HostVars> hosts = HostResolver.resolve(cl.getArgList(), inventory, cl);
 
         if (hosts.isEmpty()) {
             LogPrinter.error("No target hosts specified");
@@ -95,8 +94,7 @@ public class CommandDispatcher {
 
         // 展示主机列表
         LogPrinter.section("Target hosts");
-        hosts.forEach((name, vars) ->
-                LogPrinter.listItem(name, vars.getHost()));
+        hosts.forEach((name, vars) -> LogPrinter.listItem(name, vars.getHost()));
 
         // 仅列出主机
         if (cl.hasOption(GlobalOptions.LIST)) {
@@ -112,7 +110,7 @@ public class CommandDispatcher {
         }
 
         // 提取 CLI 变量注入
-        Map<String, Object> cliVars = extractCliVars(cl, task);
+        Map<String, Object> cliVars = extractCliVars(cl);
 
         // 执行
         TaskExecutor executor = new TaskExecutor(actionRegistry);
@@ -127,9 +125,10 @@ public class CommandDispatcher {
     }
 
     /**
-     * 构建 Options：全局选项 + 该流程用到的所有 action 的 cliOptions
+     * 构建选项
+     * @return
      */
-    private Options buildOptions(Task task) {
+    private Options buildAllOptions() {
         Options options = new Options();
 
         // 全局选项
@@ -137,20 +136,8 @@ public class CommandDispatcher {
             options.addOption(o);
         }
 
-        // 流程里用到的 action 选项（去重）
-        Set<String> seen = new HashSet<>();
-        for (Step step : task.getSteps()) {
-            String actionName = step.getAction();
-            if (actionName == null || seen.contains(actionName)) {
-                continue;
-            }
-            seen.add(actionName);
-
-            TaskAction action = actionRegistry.get(actionName);
-            if (action == null) {
-                continue;
-            }
-
+        // 所有 action 的选项，一次性注册
+        for (TaskAction action : actionRegistry.all()) {
             for (Option o : action.cliOptions()) {
                 options.addOption(o);
             }
@@ -163,51 +150,45 @@ public class CommandDispatcher {
      * 提取 CLI 变量注入：根据 action 声明的 cliVarMapping 把 -e / -f / -d 等
      * 映射到 ${command} / ${file} / ${dest} 等变量
      */
-    private Map<String, Object> extractCliVars(CommandLine cl, Task task) {
+    private Map<String, Object> extractCliVars(CommandLine cl) {
         Map<String, Object> vars = new HashMap<>(8);
-        Set<String> seen = new HashSet<>();
 
-        for (Step step : task.getSteps()) {
-            String actionName = step.getAction();
-            if (actionName == null || seen.contains(actionName)) {
-                continue;
-            }
-            seen.add(actionName);
-
-            TaskAction action = actionRegistry.get(actionName);
-            if (action == null) {
-                continue;
-            }
-
+        for (TaskAction action : actionRegistry.all()) {
             for (Map.Entry<String, String> e : action.cliVarMapping().entrySet()) {
+                // 长选项名
                 String cliOpt = e.getKey();
                 String varKey = e.getValue();
-                if (cl.hasOption(cliOpt)) {
-                    vars.put(varKey, cl.getOptionValue(cliOpt));
+                Option opt = findOption(action, cliOpt);
+                if (opt == null) {
+                    continue;
+                }
+
+                if (opt.hasArg()) {
+                    if (cl.hasOption(cliOpt)) {
+                        vars.put(varKey, cl.getOptionValue(cliOpt));
+                        LogPrinter.info("Add var:" + varKey);
+                    }
+                } else {
+                    // 开关型
+                    if (cl.hasOption(cliOpt)) {
+                        vars.put(varKey, "true");
+                        LogPrinter.info("Add var:" + varKey);
+                    }
                 }
             }
         }
-
         return vars;
     }
 
-    /**
-     * 预扫描 -i / --inventory，用于在完整解析前确定清单文件路径
-     */
-    private String preScanInventory(String[] args) {
-        String defaultFile = "inventory.yaml";
-        for (int i = 0; i < args.length; i++) {
-            boolean hasInv = ("-i".equals(args[i]) || "--inventory".equals(args[i]));
-
-            if (hasInv && i + 1 < args.length) {
-                return args[i + 1];
-            }
-            if (args[i].startsWith("--inventory=")) {
-                return args[i].substring("--inventory=".length());
+    private Option findOption(TaskAction action, String longOpt) {
+        for (Option o : action.cliOptions()) {
+            if (longOpt.equals(o.getLongOpt())) {
+                return o;
             }
         }
-        return defaultFile;
+        return null;
     }
+
 
     /**
      * 判断参数里是否带 -h / --help

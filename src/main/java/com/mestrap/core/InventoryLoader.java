@@ -26,8 +26,8 @@ public class InventoryLoader {
 
             int groups = inv.getServers() != null ? inv.getServers().size() : 0;
             int tasks = inv.getTasks() != null ? inv.getTasks().size() : 0;
-            LogPrinter.success("Loaded inventory: " + groups + " groups, "
-                    + tasks + " tasks");
+
+            LogPrinter.success("Loaded inventory: " + groups + " groups, "  + tasks + " tasks");
 
             if (inv.getGlobalVars() == null) {
                 inv.setGlobalVars(new com.mestrap.entity.HostVars());

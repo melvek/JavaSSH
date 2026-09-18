@@ -8,6 +8,9 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * @author melvek
+ */
 public class ActionRegistry {
 
     private final Map<String, TaskAction> actions = new HashMap<>();

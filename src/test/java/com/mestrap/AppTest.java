@@ -57,4 +57,17 @@ public class AppTest extends TestCase
         assertEquals(0, result); // 验证返回码
     }
 
+    public void testUnknowTask() {
+        LogPrinter.setColorEnabled(true);
+
+        CommandDispatcher dispatcher = new CommandDispatcher();
+        // 模拟用户输入 deploy 命令
+        String[] args = parseArgs("test -i inventory.yaml web_master -y");
+        // String[] args = parseArgs("");
+
+        int result = dispatcher.dispatch(args);
+
+        assertEquals(0, result); // 验证返回码
+    }
+
 }

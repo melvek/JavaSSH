@@ -13,9 +13,7 @@ import java.util.Map;
 
 public class HostResolver {
 
-    public static Map<String, HostVars> resolve(List<String> hostNames,
-                                                Inventory inventory,
-                                                CommandLine cl) {
+    public static Map<String, HostVars> resolve(List<String> hostNames, Inventory inventory, CommandLine cl) {
 
         Map<String, HostVars> target = new LinkedHashMap<>();
         HostVars globalVars = inventory.getGlobalVars();

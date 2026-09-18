@@ -2,6 +2,7 @@ package com.mestrap.cli;
 
 import com.mestrap.core.ActionRegistry;
 import com.mestrap.action.TaskAction;
+import com.mestrap.utils.Constant;
 import com.mestrap.utils.LogPrinter;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
@@ -10,6 +11,9 @@ import org.apache.commons.cli.Options;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * @author melvek
+ */
 public class ShowHelp {
 
     public static void printVersion() {
@@ -23,7 +27,7 @@ public class ShowHelp {
     public static void printGlobal(ActionRegistry actionRegistry) {
 
         System.out.println("\nJavaSSH - Lightweight SSH operations tool");
-        System.out.println("Version: 1.0.0\n");
+        System.out.println("Version: " + Constant.VERSION + "\n");
 
         System.out.println("Usage:");
         System.out.println("  jssh <task> [hosts...] [options]\n");
