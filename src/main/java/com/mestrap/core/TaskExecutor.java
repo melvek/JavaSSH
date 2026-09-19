@@ -1,11 +1,12 @@
 package com.mestrap.core;
 
 import com.mestrap.action.TaskAction;
-import com.mestrap.entity.Task;
 import com.mestrap.entity.HostVars;
 import com.mestrap.entity.Step;
+import com.mestrap.entity.Task;
 import com.mestrap.exception.JsshException;
 import com.mestrap.utils.LogPrinter;
+import com.mestrap.utils.VariableReplacer;
 
 import java.util.HashMap;
 import java.util.List;
@@ -45,6 +46,14 @@ public class TaskExecutor {
                 executeOnHost(task, hostVars, globalVars, cliVars);
                 success++;
                 LogPrinter.success(hostName + " OK");
+            } catch (JsshException ex) {
+                failed++;
+                if (ex.getStepName() != null) {
+                    LogPrinter.error(hostName + " FAIL at step '"
+                            + ex.getStepName() + "': " + ex.getMessage());
+                } else {
+                    LogPrinter.error(hostName + " FAIL: " + ex.getMessage());
+                }
             } catch (Exception ex) {
                 failed++;
                 LogPrinter.error(hostName + " FAIL: " + ex.getMessage());
@@ -63,7 +72,19 @@ public class TaskExecutor {
                               Map<String, Object> globalVars,
                               Map<String, Object> cliVars) {
 
-        Map<String, Object> baseVars = mergeBaseVars(globalVars, hostVars, cliVars);
+        String hostName = hostVars.getHost();
+
+        // 1. 变量池：global -> host，不含 CLI
+        Map<String, Object> vars = new HashMap<>(16);
+        if (globalVars != null) {
+            vars.putAll(globalVars);
+        }
+        if (hostVars.getExtraFields() != null) {
+            vars.putAll(hostVars.getExtraFields());
+        }
+
+        // 2. 解析 CLI 值里的 ${...}，每台主机各展开一次
+        Map<String, Object> resolvedCli = resolveCliVars(cliVars, vars);
 
         List<Step> steps = task.getSteps();
         int total = steps.size();
@@ -75,27 +96,30 @@ public class TaskExecutor {
 
             TaskAction action = actionRegistry.get(step.getAction());
             if (action == null) {
-                throw new RuntimeException("Unknown action: " + step.getAction());
+                throw new JsshException(hostName, step.getName(),
+                        "Unknown action: " + step.getAction(), null);
             }
 
-            // 步骤级变量池：baseVars + step.with，CLI 最后叠加（最高优先级）
-            // FIXED 修复 cli 参数会被 step 参数覆盖的错误
-            Map<String, Object> stepVars = new HashMap<>(baseVars);
+            // 3. 构造 effectiveWith：step.with 基础上，CLI 覆盖（CLI 优先级最高）
+            Map<String, Object> effectiveWith = new HashMap<>(8);
             if (step.getWith() != null) {
-                stepVars.putAll(step.getWith());
+                effectiveWith.putAll(step.getWith());
             }
-            if (cliVars != null) {
-                // CLI 中的参数优先级最高
-                stepVars.putAll(cliVars);
+            if (resolvedCli != null) {
+                effectiveWith.putAll(resolvedCli);
             }
 
+            // 4. 执行
             try {
-                action.execute(new ActionContext(hostVars, step.getWith(), stepVars));
+                action.execute(new ActionContext(hostVars, effectiveWith, vars));
+            } catch (JsshException e) {
+                throw new JsshException(hostName, step.getName(), e.getMessage(), e);
             } catch (Exception e) {
-                throw new RuntimeException("Step failed: " + step.getName() + " - " + e.getMessage(), e);
+                throw new JsshException(hostName, step.getName(),
+                        "Step failed: " + step.getName() + " - " + e.getMessage(), e);
             }
 
-            // 执行成功后等待
+            // 5. 执行成功后等待
             if (step.getDelay() > 0) {
                 LogPrinter.emptyLine();
                 LogPrinter.info("Waiting " + step.getDelay() + "s before next step...");
@@ -103,26 +127,29 @@ public class TaskExecutor {
                     Thread.sleep(step.getDelay() * 1000L);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    throw new JsshException(hostVars.getHost(), step.getName(), "Interrupted while waiting after step", e);
+                    throw new JsshException(hostName, step.getName(),
+                            "Interrupted while waiting after step", e);
                 }
             }
             LogPrinter.emptyLine();
         }
     }
 
-    private Map<String, Object> mergeBaseVars(Map<String, Object> globalVars,
-                                              HostVars hostVars,
-                                              Map<String, Object> cliVars) {
-        Map<String, Object> vars = new HashMap<>(16);
-        if (globalVars != null) {
-            vars.putAll(globalVars);
+    /**
+     * 用变量池解析 CLI 值中的 ${...}。
+     * CLI 值本身不进变量池，只作为参数覆盖 step.with。
+     */
+    private Map<String, Object> resolveCliVars(Map<String, Object> cliVars,
+                                               Map<String, Object> vars) {
+        if (cliVars == null || cliVars.isEmpty()) {
+            return null;
         }
-        if (hostVars.getExtraFields() != null) {
-            vars.putAll(hostVars.getExtraFields());
+
+        Map<String, Object> resolved = new HashMap<>(16);
+        for (Map.Entry<String, Object> e : cliVars.entrySet()) {
+            String raw = String.valueOf(e.getValue());
+            resolved.put(e.getKey(), VariableReplacer.replace(raw, vars));
         }
-        if (cliVars != null) {
-            vars.putAll(cliVars);
-        }
-        return vars;
+        return resolved;
     }
 }
