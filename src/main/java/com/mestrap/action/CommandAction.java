@@ -2,6 +2,7 @@ package com.mestrap.action;
 
 import com.mestrap.core.ActionContext;
 import com.mestrap.core.JschCommandExecutor;
+import com.mestrap.exception.JsshException;
 import com.mestrap.utils.LogPrinter;
 import com.mestrap.utils.VariableReplacer;
 import org.apache.commons.cli.Option;
@@ -11,14 +12,17 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 执行远程命令
+ * 执行远程命令。
  * -e, --execute 远程执行的命令内容，支持 ${...} 格式参数
+ *
  * @author melvek
  */
 public class CommandAction implements TaskAction {
 
     @Override
-    public String name() { return "command"; }
+    public String name() {
+        return "command";
+    }
 
     @Override
     public List<Option> cliOptions() {
@@ -38,7 +42,7 @@ public class CommandAction implements TaskAction {
     public void execute(ActionContext ctx) throws Exception {
         Object raw = ctx.getWith().get("command");
         if (raw == null) {
-            throw new IllegalArgumentException("command action requires 'command' parameter");
+            throw new JsshException("command action requires 'command' parameter");
         }
 
         String cmd = VariableReplacer.replace(String.valueOf(raw), ctx.getVars());
@@ -54,7 +58,7 @@ public class CommandAction implements TaskAction {
         );
 
         if (exitCode != 0) {
-            throw new RuntimeException("Command failed with exit code " + exitCode);
+            throw new JsshException("Command failed with exit code " + exitCode);
         }
     }
 }
