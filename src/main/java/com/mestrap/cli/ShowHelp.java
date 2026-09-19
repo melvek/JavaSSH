@@ -1,7 +1,7 @@
 package com.mestrap.cli;
 
-import com.mestrap.core.ActionRegistry;
 import com.mestrap.action.TaskAction;
+import com.mestrap.core.ActionRegistry;
 import com.mestrap.utils.Constant;
 import com.mestrap.utils.LogPrinter;
 import org.apache.commons.cli.HelpFormatter;
@@ -12,18 +12,30 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
+ * 帮助信息输出。
+ *
  * @author melvek
  */
-public class ShowHelp {
+public final class ShowHelp {
 
+    private ShowHelp() {}
+
+    /**
+     * 打印版本信息。
+     */
     public static void printVersion() {
-        LogPrinter.section("JavaSSH v1.0.0");
+        LogPrinter.section("JavaSSH v" + Constant.VERSION);
         LogPrinter.info("Lightweight SSH operations tool based on JSch");
-        String t = LocalDateTime.now()
+        String buildTime = LocalDateTime.now()
                 .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        LogPrinter.keyValue("Build time", t);
+        LogPrinter.keyValue("Build time", buildTime);
     }
 
+    /**
+     * 打印全局帮助：列出所有可用 action 及其参数，以及全局选项。
+     *
+     * @param actionRegistry action 注册表
+     */
     public static void printGlobal(ActionRegistry actionRegistry) {
 
         System.out.println("\nJavaSSH - Lightweight SSH operations tool");

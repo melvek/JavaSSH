@@ -11,16 +11,34 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class HostResolver {
+/**
+ * 目标主机解析：命令行参数 + 服务器组展开 + CLI 覆盖。
+ *
+ * @author melvek
+ */
+public final class HostResolver {
 
-    public static Map<String, HostVars> resolve(List<String> hostNames, Inventory inventory, CommandLine cl) {
+    private HostResolver() {}
 
-        Map<String, HostVars> target = new LinkedHashMap<>();
-        HostVars globalVars = inventory.getGlobalVars();
+    /**
+     * 解析目标主机列表。
+     *
+     * @param hostNames 命令行中的主机名或服务器组名
+     * @param inventory 清单
+     * @param cl        命令行参数
+     * @return 主机名到主机变量的映射
+     */
+    public static Map<String, HostVars> resolve(List<String> hostNames,
+                                                Inventory inventory,
+                                                CommandLine cl) {
+
+        Map<String, HostVars> target = new LinkedHashMap<>(16);
 
         if (hostNames == null || hostNames.isEmpty()) {
             return target;
         }
+
+        HostVars globalVars = inventory.getGlobalVars();
 
         for (String hostName : hostNames) {
 
@@ -59,21 +77,27 @@ public class HostResolver {
             }
         }
 
-        // CLI 覆盖
+        applyCliOverrides(target, cl);
+        return target;
+    }
+
+    /**
+     * 应用 CLI 覆盖：端口、用户名、密码。
+     */
+    private static void applyCliOverrides(Map<String, HostVars> target, CommandLine cl) {
+
         if (cl.hasOption(GlobalOptions.PORT)) {
-            int p = Integer.parseInt(cl.getOptionValue("P"));
-            target.values().forEach(v -> v.setPort(p));
+            int port = Integer.parseInt(cl.getOptionValue(GlobalOptions.PORT));
+            target.values().forEach(v -> v.setPort(port));
         }
         if (cl.hasOption(GlobalOptions.USERNAME)) {
-            String u = cl.getOptionValue("u");
-            target.values().forEach(v -> v.setUserName(u));
+            String user = cl.getOptionValue(GlobalOptions.USERNAME);
+            target.values().forEach(v -> v.setUserName(user));
         }
         if (cl.hasOption(GlobalOptions.PASSWORD)) {
-            String p = cl.getOptionValue("p");
-            target.values().forEach(v -> v.setPassword(p));
+            String pwd = cl.getOptionValue(GlobalOptions.PASSWORD);
+            target.values().forEach(v -> v.setPassword(pwd));
             LogPrinter.warning("Password passed via CLI is a security risk");
         }
-
-        return target;
     }
 }

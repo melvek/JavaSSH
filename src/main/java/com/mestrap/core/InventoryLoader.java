@@ -2,7 +2,9 @@ package com.mestrap.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import com.mestrap.entity.HostVars;
 import com.mestrap.entity.Inventory;
+import com.mestrap.exception.JsshException;
 import com.mestrap.utils.LogPrinter;
 
 import java.io.File;
@@ -11,13 +13,31 @@ import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class InventoryLoader {
+/**
+ * 清单文件加载器。
+ *
+ * @author melvek
+ */
+public final class InventoryLoader {
 
+    /** 日期格式：yyyyMMdd */
+    private static final String DATE_PATTERN = "yyyyMMdd";
+
+    private InventoryLoader() {}
+
+    /**
+     * 加载清单文件。
+     *
+     * @param path 清单文件路径
+     * @return 清单对象
+     * @throws JsshException 文件不存在或解析失败时抛出
+     */
     public static Inventory load(String path) {
+
         File file = new File(path);
         if (!file.exists()) {
             LogPrinter.error("Inventory not found: " + file.getAbsolutePath());
-            throw new RuntimeException("Inventory file not found: " + file.getAbsolutePath());
+            throw new JsshException("Inventory file not found: " + file.getAbsolutePath());
         }
 
         try (InputStream in = new FileInputStream(file)) {
@@ -26,21 +46,23 @@ public class InventoryLoader {
 
             int groups = inv.getServers() != null ? inv.getServers().size() : 0;
             int tasks = inv.getTasks() != null ? inv.getTasks().size() : 0;
-
-            LogPrinter.success("Loaded inventory: " + groups + " groups, "  + tasks + " tasks");
+            LogPrinter.success("Loaded inventory: " + groups + " groups, " + tasks + " tasks");
 
             if (inv.getGlobalVars() == null) {
-                inv.setGlobalVars(new com.mestrap.entity.HostVars());
+                inv.setGlobalVars(new HostVars());
             }
 
-            // 注入日期
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd");
+            // 注入日期变量
+            SimpleDateFormat sdf = new SimpleDateFormat(DATE_PATTERN);
             inv.getGlobalVars().setExtraField("date", sdf.format(new Date()));
 
             return inv;
+
+        } catch (JsshException e) {
+            throw e;
         } catch (Exception e) {
             LogPrinter.error("Failed to parse inventory: " + e.getMessage());
-            throw new RuntimeException(e);
+            throw new JsshException("Failed to parse inventory: " + e.getMessage(), e);
         }
     }
 }
