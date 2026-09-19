@@ -1,12 +1,29 @@
 package com.mestrap.core;
 
-import com.mestrap.entity.Task;
 import com.mestrap.entity.Step;
+import com.mestrap.entity.Task;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
-public class BuiltinTasks {
+/**
+ * 内置任务定义。
+ *
+ * <p>内置任务由代码提供，用户可在清单的 tasks 段中定义同名任务覆盖。
+ *
+ * @author melvek
+ */
+public final class BuiltinTasks {
 
+    private BuiltinTasks() {}
+
+    /**
+     * 返回所有内置任务，按注册顺序。
+     *
+     * @return 任务映射
+     */
     public static Map<String, Task> all() {
         Map<String, Task> map = new LinkedHashMap<>(8);
         map.put("command", command());
@@ -14,41 +31,47 @@ public class BuiltinTasks {
         return map;
     }
 
+    /**
+     * 内置 command 任务：执行远程命令。
+     */
     private static Task command() {
-        Task c = new Task();
-        c.setName("command");
-        c.setDescription("Execute a remote command");
+        Task task = new Task();
+        task.setName("command");
+        task.setDescription("Execute a remote command");
 
-        Step s = new Step();
-        s.setName("exec");
-        s.setAction("command");
+        Step step = new Step();
+        step.setName("exec");
+        step.setAction("command");
 
         Map<String, Object> withMap = new HashMap<>(2);
         withMap.put("command", "${command}");
-        s.setWith(withMap);
+        step.setWith(withMap);
 
-        c.setSteps(Collections.singletonList(s));
-        return c;
+        task.setSteps(Collections.singletonList(step));
+        return task;
     }
 
+    /**
+     * 内置 push 任务：上传文件到远程。
+     */
     private static Task push() {
-        Task c = new Task();
-        c.setName("push");
-        c.setDescription("Upload a file to remote server");
+        Task task = new Task();
+        task.setName("push");
+        task.setDescription("Upload a file to remote server");
 
-        Step s = new Step();
-        s.setName("upload");
-        s.setAction("push");
+        Step step = new Step();
+        step.setName("upload");
+        step.setAction("push");
 
         Map<String, Object> withMap = new HashMap<>(8);
         withMap.put("file", "${file}");
         withMap.put("dest", "${dest}");
-        withMap.put("zip", "${zip}");
         withMap.put("force", "${force}");
-        s.setWith(withMap);
+        withMap.put("backup", "${backup}");
+        withMap.put("zip", "${zip}");
+        step.setWith(withMap);
 
-        c.setSteps(Collections.singletonList(s));
-        return c;
+        task.setSteps(Collections.singletonList(step));
+        return task;
     }
-
 }
