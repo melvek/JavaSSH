@@ -1,9 +1,16 @@
 package com.mestrap.core;
 
 /**
+ * 远程文件覆盖策略。
+ *
+ * <p>由 push action 的 force / backup 参数组合决定：
+ * <ul>
+ *   <li>{@code !force} → FAIL</li>
+ *   <li>{@code force && !backup} → OVERWRITE</li>
+ *   <li>{@code force && backup} → BACKUP</li>
+ * </ul>
+ *
  * @author melvek
- * @date 2026/9/17 17:43
- * @description 文件处理方式
  */
 public enum OverwritePolicy {
 
@@ -16,6 +23,13 @@ public enum OverwritePolicy {
     /** 备份原文件（追加时间戳）后覆盖 */
     BACKUP;
 
+    /**
+     * 根据 force / backup 推导覆盖策略。
+     *
+     * @param force  是否允许覆盖
+     * @param backup 覆盖前是否备份
+     * @return 覆盖策略
+     */
     public static OverwritePolicy of(boolean force, boolean backup) {
         if (!force) {
             return FAIL;
