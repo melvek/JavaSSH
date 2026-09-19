@@ -8,57 +8,80 @@ import com.mestrap.utils.EncryptTool;
 import com.mestrap.utils.LogPrinter;
 
 import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 /**
- * 远程命令执行服务
+ * 远程命令执行服务。
+ *
  * @author melvek
  */
-public class JschCommandExecutor {
+public final class JschCommandExecutor {
 
-    public static int executeCommand(String host, int port, String username, String password, String command) {
-        StringBuilder output = new StringBuilder();
+    /** SSH 连接超时，毫秒 */
+    private static final int CONNECT_TIMEOUT_MS = 10000;
+
+    /** 等待 channel 关闭的轮询间隔，毫秒 */
+    private static final long CHANNEL_POLL_INTERVAL_MS = 50L;
+
+    /** 连接异常时的退出码 */
+    private static final int EXIT_CODE_ERROR = -1;
+
+    private JschCommandExecutor() {}
+
+    /**
+     * 执行远程命令，输出直接打印到控制台。
+     *
+     * @param host     主机地址
+     * @param port     端口
+     * @param username 用户名
+     * @param password 加密后的密码
+     * @param command  命令内容
+     * @return 退出码：0 成功，非 0 失败，-1 连接或执行异常
+     */
+    public static int executeCommand(String host, int port, String username,
+                                     String password, String command) {
+
         Session session = null;
         ChannelExec channel = null;
 
         try {
             JSch jsch = new JSch();
-            // 1. Create SSH session
             session = jsch.getSession(username, host, port);
-
-            // Decrypt password
-            String pwd = EncryptTool.decrypt(password);
-            session.setPassword(pwd);
-
-            // Configuration: skip host key check (for testing only; production should handle key verification)
+            session.setPassword(EncryptTool.decrypt(password));
             session.setConfig("StrictHostKeyChecking", "no");
+            session.connect(CONNECT_TIMEOUT_MS);
 
-            // 2. Connect session (set timeout to 10 seconds)
-            session.connect(10000);
-
-            // 3. Open channel for executing command
             channel = (ChannelExec) session.openChannel("exec");
-            channel.setCommand(command);
+            // 把 stderr 重定向到 stdout，统一读取，避免两个流阻塞
+            channel.setCommand(command + " 2>&1");
 
-            // 4. Get input stream for command execution result
-            // If error information is needed, use channel.getErrStream()
-            BufferedReader reader = new BufferedReader(new InputStreamReader(channel.getInputStream()));
-
-            // 5. Connect channel and read output
+            InputStream in = channel.getInputStream();
             channel.connect();
+
+            // 实时打印输出
+            BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
             String line;
             while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
+                LogPrinter.info(line);
             }
 
-            LogPrinter.info(output.toString());
+            // 等待 channel 关闭，确保退出码可用
+            while (!channel.isClosed()) {
+                Thread.sleep(CHANNEL_POLL_INTERVAL_MS);
+            }
 
             return channel.getExitStatus();
-        } catch (JSchException | java.io.IOException e) {
-            System.err.println("Execution error: " + e.getMessage());
-            return 1;
+
+        } catch (JSchException | IOException | InterruptedException e) {
+            LogPrinter.error("Execution error: " + e.getMessage());
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            return EXIT_CODE_ERROR;
         } finally {
-            // 6. Close connection, release resources
             if (channel != null && channel.isConnected()) {
                 channel.disconnect();
             }
@@ -67,5 +90,4 @@ public class JschCommandExecutor {
             }
         }
     }
-
 }

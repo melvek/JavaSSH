@@ -1,6 +1,10 @@
 package com.mestrap.core;
 
-import com.jcraft.jsch.*;
+import com.jcraft.jsch.ChannelSftp;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
+import com.jcraft.jsch.SftpException;
 import com.mestrap.exception.JsshException;
 import com.mestrap.utils.Constant;
 import com.mestrap.utils.EncryptTool;
@@ -13,19 +17,35 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 /**
+ * SFTP 文件上传服务。
+ *
  * @author melvek
  */
-public class JschFileUploader {
+public final class JschFileUploader {
+
+    /** SSH 连接超时，毫秒 */
+    private static final int CONNECT_TIMEOUT_MS = 30000;
+
+    /** 备份文件时间戳格式 */
+    private static final String BACKUP_TIMESTAMP_PATTERN = "yyyyMMddHHmmss";
 
     private static final ThreadLocal<SimpleDateFormat> DATE_FORMAT =
-            ThreadLocal.withInitial(() -> new SimpleDateFormat("yyyyMMddHHmmss"));
+            ThreadLocal.withInitial(() -> new SimpleDateFormat(BACKUP_TIMESTAMP_PATTERN));
+
+    private JschFileUploader() {}
 
     /**
-     * 上传文件
+     * 上传文件到远程服务器。
      *
-     * @param policy 覆盖策略：FAIL / OVERWRITE / BACKUP
+     * @param host         主机地址
+     * @param port         端口
+     * @param username     用户名
+     * @param password     加密后的密码
+     * @param localFile    本地文件路径
+     * @param remoteTarget 远程目标路径
+     * @param policy       覆盖策略
      * @return 0 表示成功
-     * @throws JsshException 上传失败或目标已存在且策略为 FAIL
+     * @throws JsshException 上传失败，或目标已存在且策略为 FAIL
      */
     public static int uploadFile(String host, int port, String username,
                                  String password, String localFile,
@@ -40,7 +60,7 @@ public class JschFileUploader {
             session = jsch.getSession(username, host, port);
             session.setPassword(EncryptTool.decrypt(password));
             session.setConfig("StrictHostKeyChecking", "no");
-            session.connect(30000);
+            session.connect(CONNECT_TIMEOUT_MS);
 
             sftp = (ChannelSftp) session.openChannel("sftp");
             sftp.connect();
@@ -56,26 +76,12 @@ public class JschFileUploader {
 
             // 3. 目标不能是目录
             if (directoryExists(sftp, finalPath)) {
-                throw new JsshException(
-                        "Target exists and is a directory: " + finalPath);
+                throw new JsshException("Target exists and is a directory: " + finalPath);
             }
 
             // 4. 根据策略处理已存在的文件
             if (exists(sftp, finalPath)) {
-                switch (policy) {
-                    case FAIL:
-                        throw new JsshException(
-                                "Remote file already exists: " + finalPath
-                                        + " (use -F/--force to overwrite, add -B/--backup to keep a backup)");
-                    case OVERWRITE:
-                        LogPrinter.info("Overwriting existing file: " + finalPath);
-                        break;
-                    case BACKUP:
-                        String backup = backupExisting(sftp, finalPath);
-                        LogPrinter.info("Backed up existing file to: " + backup);
-                        break;
-                    default:
-                }
+                handleExisting(sftp, finalPath, policy);
             }
 
             // 5. 上传
@@ -86,6 +92,8 @@ public class JschFileUploader {
             LogPrinter.success("Uploaded: " + localFile + " -> " + finalPath);
             return 0;
 
+        } catch (JsshException e) {
+            throw e;
         } catch (JSchException | SftpException | IOException e) {
             throw new JsshException("Upload failed: " + e.getMessage(), e);
         } finally {
@@ -103,7 +111,28 @@ public class JschFileUploader {
     // ------------------------------------------------------------------
 
     /**
-     * 备份已存在的文件：重命名为 base.<timestamp>.ext
+     * 根据策略处理已存在的远程文件。
+     */
+    private static void handleExisting(ChannelSftp sftp, String finalPath,
+                                       OverwritePolicy policy) throws SftpException {
+
+        switch (policy) {
+            case FAIL:
+                throw new JsshException("Remote file already exists: " + finalPath
+                        + " (use -F/--force to overwrite, add -B/--backup to keep a backup)");
+            case OVERWRITE:
+                LogPrinter.info("Overwriting existing file: " + finalPath);
+                break;
+            case BACKUP:
+                String backup = backupExisting(sftp, finalPath);
+                LogPrinter.info("Backed up existing file to: " + backup);
+                break;
+            default:
+        }
+    }
+
+    /**
+     * 备份已存在的文件：重命名为 base.<timestamp>.ext。
      *
      * @return 备份后的完整路径
      */
@@ -115,45 +144,55 @@ public class JschFileUploader {
 
         int dot = fileName.lastIndexOf('.');
         String base = dot > 0 ? fileName.substring(0, dot) : fileName;
-        String ext  = dot > 0 ? fileName.substring(dot) : "";
+        String ext = dot > 0 ? fileName.substring(dot) : "";
 
         String timestamp = DATE_FORMAT.get().format(new Date());
         String backupName = base + "." + timestamp + ext;
-        String backupPath = parentDir + "/" + backupName;
+        String backupPath = parentDir + Constant.SEPARATOR + backupName;
 
         sftp.rename(targetPath, backupPath);
         return backupPath;
     }
 
     /**
-     * 解析目标路径，模拟 cp 行为
+     * 解析目标路径，模拟 cp 行为：
+     * <ul>
+     *   <li>目标以 / 结尾：视为目录，拼接文件名</li>
+     *   <li>目标是已存在的目录：拼接文件名</li>
+     *   <li>其他：视为文件路径</li>
+     * </ul>
      */
     private static String resolveTargetPath(ChannelSftp sftp, String localFile,
                                             String remoteTarget) throws SftpException {
+
         String fileName = new File(localFile).getName();
 
-        // 以 / 结尾：目标是目录
         if (remoteTarget.endsWith(Constant.SEPARATOR)) {
             return remoteTarget + fileName;
         }
 
-        // 目标已存在且是目录：放到目录里
         if (exists(sftp, remoteTarget) && isDirectory(sftp, remoteTarget)) {
             return remoteTarget + Constant.SEPARATOR + fileName;
         }
 
-        // 其他：视为文件路径
         return remoteTarget;
     }
 
     private static boolean exists(ChannelSftp sftp, String path) {
-        try { sftp.stat(path); return true; }
-        catch (SftpException e) { return false; }
+        try {
+            sftp.stat(path);
+            return true;
+        } catch (SftpException e) {
+            return false;
+        }
     }
 
     private static boolean isDirectory(ChannelSftp sftp, String path) {
-        try { return sftp.stat(path).isDir(); }
-        catch (SftpException e) { return false; }
+        try {
+            return sftp.stat(path).isDir();
+        } catch (SftpException e) {
+            return false;
+        }
     }
 
     private static boolean directoryExists(ChannelSftp sftp, String path) {
@@ -162,10 +201,10 @@ public class JschFileUploader {
 
     private static String getParentDirectory(String path) {
         if (path == null || path.isEmpty()) {
-            return "/";
+            return Constant.SEPARATOR;
         }
-        String normalized = path.replace('\\', '/');
-        int lastSlash = normalized.lastIndexOf('/');
-        return lastSlash <= 0 ? "/" : normalized.substring(0, lastSlash);
+        String normalized = path.replace('\\', Constant.SEPARATOR_CHAR);
+        int lastSlash = normalized.lastIndexOf(Constant.SEPARATOR_CHAR);
+        return lastSlash <= 0 ? Constant.SEPARATOR : normalized.substring(0, lastSlash);
     }
 }
