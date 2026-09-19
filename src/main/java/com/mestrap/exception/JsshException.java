@@ -1,9 +1,11 @@
 package com.mestrap.exception;
 
 /**
+ * JavaSSH 统一业务异常。
+ *
+ * <p>携带主机名与步骤名，便于在日志和摘要中定位失败位置。
+ *
  * @author melvek
- * @date 2026/9/17 17:26
- * @description JsshException 统一异常处理
  */
 public class JsshException extends RuntimeException {
 
@@ -34,6 +36,19 @@ public class JsshException extends RuntimeException {
         super(message, cause);
         this.host = null;
         this.stepName = null;
+    }
+
+    /**
+     * 带主机、步骤、消息的构造方法。
+     *
+     * @param host     失败主机
+     * @param stepName 失败步骤
+     * @param message  错误消息
+     */
+    public JsshException(String host, String stepName, String message) {
+        super(message);
+        this.host = host;
+        this.stepName = stepName;
     }
 
     /**

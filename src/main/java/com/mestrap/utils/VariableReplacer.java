@@ -1,18 +1,35 @@
 package com.mestrap.utils;
 
+import com.mestrap.exception.JsshException;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class VariableReplacer {
+/**
+ * 变量替换工具。
+ *
+ * <p>严格模式：未解析的 {@code ${var}} 会抛出 {@link JsshException}。
+ * <p>递归展开最多 4 层，覆盖 global / group / host / step / CLI 五个来源。
+ *
+ * @author melvek
+ */
+public final class VariableReplacer {
 
     private static final Pattern PLACEHOLDER = Pattern.compile("\\$\\{([^}]+)\\}");
     private static final int MAX_DEPTH = 4;
 
+    private VariableReplacer() {}
+
     /**
-     * 替换变量。若替换后仍存在未解析的 ${xxx}，抛出 JsshException。
+     * 替换变量。
+     *
+     * @param template 模板字符串，可含 ${var}
+     * @param vars     变量池
+     * @return 替换后的字符串
+     * @throws JsshException 存在未解析的 ${var} 时抛出
      */
     public static String replace(String template, Map<String, Object> vars) {
         if (template == null || template.isEmpty()) {
@@ -28,15 +45,18 @@ public class VariableReplacer {
             current = next;
         }
 
-        // 检查是否还有未解析的占位符
         List<String> missing = findMissingKeys(current);
         if (!missing.isEmpty()) {
-            throw new IllegalArgumentException("Unresolved variable(s): " + missing + " in \"" + template + "\"");
+            throw new JsshException(
+                    "Unresolved variable(s): " + missing + " in \"" + template + "\"");
         }
 
         return current;
     }
 
+    /**
+     * 单次替换，把 ${var} 用 vars 里的值替换掉，未命中的保留原样。
+     */
     private static String replaceOnce(String template, Map<String, Object> vars) {
         Matcher m = PLACEHOLDER.matcher(template);
         StringBuffer sb = new StringBuffer();
@@ -51,6 +71,9 @@ public class VariableReplacer {
         return sb.toString();
     }
 
+    /**
+     * 找出字符串中所有未解析的占位符键名。
+     */
     private static List<String> findMissingKeys(String s) {
         List<String> keys = new ArrayList<>();
         Matcher m = PLACEHOLDER.matcher(s);
